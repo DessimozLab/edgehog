@@ -4,22 +4,31 @@
 
 ```edgeHOG``` relies on objects called HOGs (Hierarchical Groups of Orthologs) to model gene lineages and ancestral gene content. Basically, genes that belong to the same HOG across extant genomes are inferred to have descended from the same common ancestral gene in the common ancestor of these genomes. Accordingly, adjacencies between extant genes can be converted to edges between HOGs, which enables parsimonious ancestral gene order inferences.  
 
-## Installation (NOT READY YET)
+## Installation
 
+### From PyPi using pip
+`edgeHOG`  can be installed directly from pypi using pip. The command is the following:
+
+```bash
+pip install edgehog
+```
+
+### From sources
 ```edgeHOG``` was built and tested with python 3.6. To set up ```edgeHOG``` on your local machine, please follow the instructions below
 
 ```bash
-git clone https://gitlab.com/charles-bernard/edgehog.git
+git clone https://github.com/dessimozlab/edgehog.git
 cd edgehog
 python setup.py install
 ```
+
 ## Usage
 
 ```
-usage: edgehog.py [-h] [--version] [--output_directory OUTPUT_DIRECTORY]
-                  --species_tree SPECIES_TREE --hogs HOGS
-                  [--gff_directory GFF_DIRECTORY] [--hdf5 HDF5] [--date_edges]
-                  [--max_gaps MAX_GAPS]
+usage: edgehog [-h] [--version] [--output_directory OUTPUT_DIRECTORY]
+               --species_tree SPECIES_TREE --hogs HOGS
+               [--gff_directory GFF_DIRECTORY] [--hdf5 HDF5] [--date_edges]
+               [--max_gaps MAX_GAPS]
 
 edgehog is a software tool that infers an ancestral synteny graph at each
 internal node of an input species phylogenetic tree
