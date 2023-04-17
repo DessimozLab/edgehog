@@ -178,6 +178,7 @@ def init_extant_graphs_from_hdf5(ham, hdf5_file):
         #                 contiguity_dict[(node_a, node_b)] = contiguity_dict[(node_b, node_a)] = 1
         gene.genome.taxon.add_feature('bottom_up_synteny', graph)
         gene.genome.taxon.add_feature('contiguity_dict', contiguity_dict)
+    h5.close()
     return ham
 
 

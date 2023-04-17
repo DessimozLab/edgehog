@@ -8,15 +8,8 @@ import sys
 import shutil
 
 
-def check_out_dir(parent_dir):
-    # create a directory 'ansyn_output' in the output directory provided by the user
-    if not os.path.exists(parent_dir):
-        sys.exit('error: Unable to locate \'%s\'. '
-                 'Please provide a correct path to the output directory' % parent_dir)
-    out_dir = os.path.join(parent_dir, 'edgehog_output')
-    if os.path.exists(out_dir):
-        shutil.rmtree(out_dir)
-    os.makedirs(out_dir)
+def check_out_dir(out_dir):
+    os.makedirs(out_dir, exist_ok=True)
     return out_dir
 
 

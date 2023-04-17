@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
-
+import numpy
 import pandas as pd
 import os
 import networkx as nx
 import pyham
+import tables
 
 
 def label_nodes(graph):
@@ -90,6 +90,75 @@ def graph_to_df(graph, genome, edge_datation, label_dict = None, annotation_dict
         edge_dict[c] += singleton_dict[c]
     df = pd.DataFrame.from_records(edge_dict)
     return df[column_names]
+
+
+class HDF5Writer:
+    def __init__(self, fname, oma_db_fn):
+        self.fname = fname
+        self.oma_db = oma_db_fn
+
+    def __enter__(self):
+        self.oma_h5 = tables.open_file(self.oma_db, 'r')
+        self.h5 = tables.open_file(self.fname, 'w', filters=tables.Filters(complevel=6, complib="blosc"))
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.h5.close()
+        self.oma_h5.close()
+
+    def _load_hog_at_level(self, taxid):
+        try:
+            tab = self.oma_h5.get_node('/AncestralGenomes/tax{}/Hogs'.format(taxid))
+        except tables.NoSuchNodeError:
+            tab = self.oma_h5.get_node('/Hogs_per_Level/tax{}'.format(taxid))
+        return {row['ID'].decode(): row_nr for row_nr, row in enumerate(tab.read())}
+
+    def add_graph_at_level(self, taxid, tree_node):
+        hogid_lookup = self._load_hog_at_level(taxid)
+        dfs, evidence_enum = [], {"linear": 1, "parsimonious": 2, "any": 4}
+        for evidence, graph in zip(
+                ("linear", "parsimonious", "any"),
+                (tree_node.linear_synteny, tree_node.top_down_synteny, tree_node.bottom_up_syntey)):
+            data, ev = [], evidence_enum[evidence]
+
+            for u, v, w in graph.edges.data("weight", default=1):
+                data.append((hogid_lookup[u.hog_id], hogid_lookup[v.hog_id], w, ev))
+            df = pd.DataFrame.from_records(numpy.array(
+                data,
+                dtype=[("Hog1_idx", "i4"), ("Hog2_idx", "i4"), ("Weight", "i4"), ("Evidence", "i4")]
+            ))
+            dfs.append(df)
+        df = pd.concat(dfs, ignore_index=True)
+        df.drop_duplicates(("Hog1_idx", "Hog2_idx"), keep="first", inplace=True)
+        as_array = df.to_records(index=False)
+        tab = self.h5.create_table("/AncestralGenomes/tax{}".format(taxid),
+                                   "Synteny",
+                                   obj=as_array,
+                                   expectedrows=len(as_array),
+                                   createparents=True)
+        for col in ("Hog1_idx", "Hog2_idx", "Weight", "Evidence"):
+            tab.colinstances[col].create_csindex()
+
+    def get_taxid_from_hog_names(self, graph):
+        taxids = set([])
+        for u in graph.nodes:
+            taxids.add(u.hog_id.rsplit('_')[1])
+        if len(taxids) != 1:
+            raise Exception("multiple taxids on this level: {}".format(taxids))
+        return taxids.pop()
+
+
+def write_as_hdf5(args, ham, out_dir):
+    with HDF5Writer(os.path.join(out_dir, "Synteny.h5"), args.hdf5) as writer:
+        for tree_node in ham.taxonomy.tree.traverse("preorder"):
+            try:
+                genome = tree_node.genome
+            except AttributeError:
+                print('No genome stored for {}'.format(tree_node.name))
+                continue
+            if isinstance(genome, pyham.AncestralGenome):
+                taxid = writer.get_taxid_from_hog_names(tree_node.linear_synteny)
+                writer.add_graph_at_level(taxid, tree_node)
 
 
 def write_output(args, ham, out_dir):

@@ -19,7 +19,7 @@ pip install edgehog
 ```bash
 git clone https://github.com/dessimozlab/edgehog.git
 cd edgehog
-python setup.py install
+poetry install
 ```
 
 ## Usage
