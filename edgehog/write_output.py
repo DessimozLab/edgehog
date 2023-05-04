@@ -114,31 +114,31 @@ class HDF5Writer:
         return {row['ID'].decode(): row_nr for row_nr, row in enumerate(tab.read())}
 
     def add_graph_at_level(self, taxid, tree_node):
+        from pyoma.browser.tablefmt import AncestralSyntenyRels
         hogid_lookup = self._load_hog_at_level(taxid)
-        dfs, evidence_enum = [], {"linear": 1, "parsimonious": 2, "any": 4}
+        dtype = tables.dtype_from_descr(AncestralSyntenyRels)
+        dfs = []
         for evidence, graph in zip(
-                ("linear", "parsimonious", "any"),
+                ("linearized", "parsimonious", "any"),
                 (tree_node.linear_synteny, tree_node.top_down_synteny, tree_node.bottom_up_synteny)):
-            data, ev = [], evidence_enum[evidence]
+            data = []
+            ev = AncestralSyntenyRels.columns['Evidence'].enum[evidence]
 
             for u, v, w in graph.edges.data("weight", default=1):
                 h1 = u.hog_id.rsplit('_')[0]
                 h2 = v.hog_id.rsplit('_')[0]
                 data.append((hogid_lookup[h1], hogid_lookup[h2], w, ev))
-            df = pd.DataFrame.from_records(numpy.array(
-                data,
-                dtype=[("Hog1_idx", "i4"), ("Hog2_idx", "i4"), ("Weight", "i4"), ("Evidence", "i4")]
-            ))
+            df = pd.DataFrame.from_records(numpy.array(data, dtype=dtype))
             dfs.append(df)
         df = pd.concat(dfs, ignore_index=True)
-        df.drop_duplicates(("Hog1_idx", "Hog2_idx"), keep="first", inplace=True)
+        df.drop_duplicates(("HogRow1", "HogRow2"), keep="first", inplace=True)
         as_array = df.to_records(index=False)
-        tab = self.h5.create_table("/AncestralGenome/tax{}".format(taxid),
-                                   "Synteny",
+        tab = self.h5.create_table("/AncestralGenomes/tax{}".format(taxid),
+                                   "Synteny", description=AncestralSyntenyRels,
                                    obj=as_array,
                                    expectedrows=len(as_array),
                                    createparents=True)
-        for col in ("Hog1_idx", "Hog2_idx", "Weight", "Evidence"):
+        for col in ("HogRow1", "HogRow2", "Weight", "Evidence"):
             tab.colinstances[col].create_csindex()
 
     def get_taxid_from_hog_names(self, graph):
