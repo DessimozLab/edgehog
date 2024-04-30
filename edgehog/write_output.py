@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import gzip
 import numpy
 import pandas as pd
 import os
@@ -183,19 +184,33 @@ def write_output(args, ham, out_dir):
             label_dict, annotation_dict = label_nodes(tree_node.bottom_up_synteny)
             
             df = graph_to_df(tree_node.bottom_up_synteny, genome, False, label_dict, annotation_dict)
-            df.to_csv(os.path.join(out_dir, str(g) + '_bottom-up_synteny_graph_edges.tsv'), index = False, header = True, sep = '\t')
+            df.to_csv(os.path.join(out_dir, str(g) + '_bottom-up_synteny_graph_edges.tsv.gz'),
+                      compression='gzip',
+                      index=False,
+                      header=True,
+                      sep='\t')
             
             df = graph_to_df(tree_node.top_down_synteny, genome, False, label_dict, annotation_dict)
-            df.to_csv(os.path.join(out_dir, str(g) + '_top-down_synteny_graph_edges.tsv'), index = False, header = True, sep = '\t')
+            df.to_csv(os.path.join(out_dir, str(g) + '_top-down_synteny_graph_edges.tsv.gz'),
+                      compression='gzip',
+                      index=False,
+                      header=True,
+                      sep='\t')
             
             df = graph_to_df(tree_node.linear_synteny, genome, False, label_dict, annotation_dict)
-            df.to_csv(os.path.join(out_dir, str(g) + '_linearized_synteny_graph_edges.tsv'), index = False, header = True, sep = '\t')
+            df.to_csv(os.path.join(out_dir, str(g) + '_linearized_synteny_graph_edges.tsv.gz'),
+                      compression='gzip',
+                      index=False,
+                      header=True,
+                      sep='\t')
         else:
-            if args.date_edges:
-                df = graph_to_df(tree_node.bottom_up_synteny, genome, True)
-            else:
-                df = graph_to_df(tree_node.bottom_up_synteny, genome, False)
-            df.to_csv(os.path.join(out_dir, str(g) + '_extant_synteny_graph_edges.tsv'), index = False, header = True, sep = '\t')
+            # extant genome
+            df = graph_to_df(tree_node.bottom_up_synteny, genome, edge_datation=args.date_edges)
+            df.to_csv(os.path.join(out_dir, str(g) + '_extant_synteny_graph_edges.tsv.gz'),
+                      compression='gzip',
+                      index=False,
+                      header=True,
+                      sep='\t')
             
 
         genome_dict['genome_id'].append(g)
