@@ -31,8 +31,7 @@ def date_edges(ham):
                     else:
                         graph[gene][adjacent_gene]["lca_node"] = tree_node
             graph[gene][adjacent_gene]["lca"] = graph[gene][adjacent_gene]["lca_node"].genome.name
-            if isinstance(genome, pyham.ExtantGenome):
-                graph[gene][adjacent_gene]["age"] = 1 - graph[gene][adjacent_gene]["lca_node"].red
+            graph[gene][adjacent_gene]["age"] = 1 - graph[gene][adjacent_gene]["lca_node"].red
 
 
 def phylostratify(ham):

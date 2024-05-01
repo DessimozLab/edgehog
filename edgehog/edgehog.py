@@ -65,16 +65,16 @@ def main():
     end_time = time.time()
     timer["top-down phase"] = end_time - start_time
         
-    start_time = time.time()
-    linearize_graphs(ham)
-    end_time = time.time()
-    timer["linearization"] = end_time - start_time
-    
     if args.date_edges:
         start_time = time.time()
         date_edges(ham)
         end_time = time.time()
         timer["edge datation"] = end_time - start_time
+
+    start_time = time.time()
+    linearize_graphs(ham)
+    end_time = time.time()
+    timer["linearization"] = end_time - start_time
         
     if args.phylostratify:
         start_time = time.time()

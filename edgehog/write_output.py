@@ -69,9 +69,10 @@ def graph_to_df(graph, genome, edge_datation, label_dict = None, annotation_dict
                     edge_dict['gene2'].append(v.prot_id)
                     edge_dict['gene1_extant_annotations'].append(u.prot_id)
                     edge_dict['gene2_extant_annotations'].append(v.prot_id)
-                    if edge_datation:
-                        edge_dict['predicted_edge_lca'].append(graph[u][v]["lca"])
-                        edge_dict['predicted_edge_age_relative_to_root'].append('%.2f' % graph[u][v]["age"])
+
+                if edge_datation:
+                    edge_dict['predicted_edge_lca'].append(graph[u][v]["lca"])
+                    edge_dict['predicted_edge_age_relative_to_root'].append('%.2f' % graph[u][v]["age"])
             car_counter += 1
         else:
             u = list(cc)[0]
@@ -119,7 +120,7 @@ class HDF5Writer:
         dfs, evidence_enum = [], {"linear": 1, "parsimonious": 2, "any": 4}
         for evidence, graph in zip(
                 ("linear", "parsimonious", "any"),
-                (tree_node.linear_synteny, tree_node.top_down_synteny, tree_node.bottom_up_syntey)):
+                (tree_node.linear_synteny, tree_node.top_down_synteny, tree_node.bottom_up_synteny)):
             data, ev = [], evidence_enum[evidence]
 
             for u, v, w in graph.edges.data("weight", default=1):
@@ -190,14 +191,14 @@ def write_output(args, ham, out_dir):
                       header=True,
                       sep='\t')
             
-            df = graph_to_df(tree_node.top_down_synteny, genome, False, label_dict, annotation_dict)
+            df = graph_to_df(tree_node.top_down_synteny, genome, args.date_edges, label_dict, annotation_dict)
             df.to_csv(os.path.join(out_dir, str(g) + '_top-down_synteny_graph_edges.tsv.gz'),
                       compression='gzip',
                       index=False,
                       header=True,
                       sep='\t')
             
-            df = graph_to_df(tree_node.linear_synteny, genome, False, label_dict, annotation_dict)
+            df = graph_to_df(tree_node.linear_synteny, genome, args.date_edges, label_dict, annotation_dict)
             df.to_csv(os.path.join(out_dir, str(g) + '_linearized_synteny_graph_edges.tsv.gz'),
                       compression='gzip',
                       index=False,
