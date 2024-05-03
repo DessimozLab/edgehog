@@ -6,7 +6,6 @@ import pyham
 def date_edges(ham):
     print('###################################')
     print('Predicting age of extant edges ...')
-    lca = dict()
     for tree_node in ham.taxonomy.tree.traverse('preorder'):
         try:
             genome = tree_node.genome
@@ -15,24 +14,24 @@ def date_edges(ham):
             continue
         if isinstance(genome, pyham.AncestralGenome):
             graph = tree_node.top_down_synteny
-            for gene, adjacent_gene, edge_attributes in graph.edges.data():
-                edge_key = sorted([gene.get_top_level_hog().hog_id, adjacent_gene.get_top_level_hog().hog_id])
-                if (edge_key[0], edge_key[1]) not in lca:
-                    lca[(edge_key[0], edge_key[1])] = tree_node
         elif isinstance(genome, pyham.ExtantGenome):
             graph = tree_node.bottom_up_synteny
-            for gene, adjacent_gene, edge_attributes in graph.edges.data():
+        if tree_node.up:
+            parent_graph = tree_node.up.top_down_synteny
+        for gene, adjacent_gene, edge_attributes in graph.edges.data():
+            if not tree_node.up:
+                graph[gene][adjacent_gene]["lca_node"] = tree_node
+            else:
                 if gene.parent is None or adjacent_gene.parent is None:
-                    lca_edge = genome.name
-                    age_edge = 0
+                    graph[gene][adjacent_gene]["lca_node"] = tree_node
                 else:
-                    edge_key = sorted([gene.get_top_level_hog().hog_id, adjacent_gene.get_top_level_hog().hog_id])
-                    if (edge_key[0], edge_key[1]) not in lca:
-                        lca[(edge_key[0], edge_key[1])] = tree_node
-                    lca_edge = lca[(edge_key[0], edge_key[1])].genome.name
-                    age_edge = 1 - lca[(edge_key[0], edge_key[1])].red
-                graph[gene][adjacent_gene]["age"] = age_edge
-                graph[gene][adjacent_gene]["lca"] = lca_edge
+                    parent_edge = (gene.parent, adjacent_gene.parent)
+                    if parent_graph.has_edge(*parent_edge):
+                        graph[gene][adjacent_gene]["lca_node"] = parent_graph[gene.parent][adjacent_gene.parent]["lca_node"]
+                    else:
+                        graph[gene][adjacent_gene]["lca_node"] = tree_node
+            graph[gene][adjacent_gene]["lca"] = graph[gene][adjacent_gene]["lca_node"].genome.name
+            graph[gene][adjacent_gene]["age"] = 1 - graph[gene][adjacent_gene]["lca_node"].red
 
 
 def phylostratify(ham):
@@ -91,12 +90,3 @@ def phylostratify(ham):
                         stratigraphy["lost_edges_due_to_gene_loss"] += 1
                     
             tree_node.add_feature('stratigraphy', stratigraphy)      
-                    
-                
-                
-                
-                
-                
-                
-                
-        

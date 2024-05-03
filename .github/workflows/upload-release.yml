@@ -19,15 +19,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.x'
     - name: Install poetry
-      uses: Gr1N/setup-poetry@v8
+      uses: Gr1N/setup-poetry@v9
     - name: Install dependencies and package
-      run: poetry install
+      run: |
+        poetry lock
+        poetry show --tree
+        poetry install
     - name: Build package
       env:
         POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
