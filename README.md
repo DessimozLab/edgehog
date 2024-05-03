@@ -24,6 +24,10 @@ poetry install
 
 ## Usage
 
+> [!CAUTION]
+> This branch `oma` contains adaptions to integrate the results directly into a OmaServer.h5 file.
+> You most likely should switch to the main branch.
+
 ```
 usage: edgehog [-h] [--version] [--output_directory OUTPUT_DIRECTORY]
                --species_tree SPECIES_TREE --hogs HOGS
