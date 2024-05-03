@@ -31,12 +31,13 @@ def main():
                             'e.g.  if max_gaps = 2: the probabilistic A-b-c-D-E-f-g-h-I-J graph will be turn into A-D-E ; I-J in the ancestor'
                             'while if max_gaps = 3: the probabilistic A-b-c-D-E-f-g-h-I-J graph will be turn into A-D-E-I-J   in the ancestor', default=3)
     # arg_parser.add_argument('--cpu', type=str, default='1', help='number of CPUs to use (default is 1)')
+    arg_parser.add_argument('--include_extant_genes', action='store_true', help='include extant genes in output file for ancestral reconstructions.')
     arg_parser.add_argument("--out-format", choices=("TSV", "HDF5"), default="TSV",
                             help="define output format. Can be TSV (tab seperated files) or HDF5 (compatible for integration into oma hdf5)")
     args = arg_parser.parse_args()
-    
+
     timer = dict()
-    
+
     start_time = time.time()
     out_dir = check_args(args)
 
@@ -51,20 +52,20 @@ def main():
         init_extant_graphs(1, ham, args.hogs, args.gff_directory, hogxml_entries, protein_id_to_hogxml_entry)
     elif args.hdf5:
         init_extant_graphs_from_hdf5(ham, args.hdf5)
-      
+
     end_time = time.time()
     timer["preprocessing - loading extant synteny"] = end_time - start_time
-   
+
     start_time = time.time()
     leaves_to_root_synteny_propagation(ham, args.max_gaps)
     end_time = time.time()
     timer["bottom-up phase"] = end_time - start_time
-    
+
     start_time = time.time()
     root_to_leaves_edge_trimming(ham)
     end_time = time.time()
     timer["top-down phase"] = end_time - start_time
-        
+
     if args.date_edges:
         start_time = time.time()
         date_edges(ham)
@@ -75,13 +76,13 @@ def main():
     linearize_graphs(ham)
     end_time = time.time()
     timer["linearization"] = end_time - start_time
-        
+
     if args.phylostratify:
         start_time = time.time()
         phylostratify(ham)
         end_time = time.time()
         timer["phylostratigraphy"] = end_time - start_time
-    
+
     start_time = time.time()
     if args.out_format == "HDF5":
         write_as_hdf5(args, ham, out_dir)
@@ -89,14 +90,14 @@ def main():
         write_output(args, ham, out_dir)
     end_time = time.time()
     timer["writing output"] = end_time - start_time
-    
+
     print('Completed!')
-    
+
     print('###################################')
     for step in timer:
         print("%30s:\tdone in %.3f seconds" % (step, timer[step]))
-    
 
-if __name__=='__main__': 
+
+if __name__=='__main__':
     main()
-    
+
