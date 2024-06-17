@@ -110,11 +110,16 @@ class HDF5Writer:
     def __enter__(self):
         self.oma_h5 = tables.open_file(self.oma_db, 'r')
         self.h5 = tables.open_file(self.fname, 'w', filters=tables.Filters(complevel=6, complib="blosc"))
+        self.tax2taxid = self._load_taxname_2_taxid()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.h5.close()
         self.oma_h5.close()
+
+    def _load_taxname_2_taxid(self):
+        tab = self.oma_h5.get_node("/Taxonomy")
+        return {row['Name'].decode(): int(row['NCBITaxonId']) for row in tab.read()}
 
     def _load_hog_at_level(self, taxid):
         try:
@@ -137,7 +142,9 @@ class HDF5Writer:
             for u, v, w in graph.edges.data("weight", default=1):
                 h1 = u.hog_id.rsplit('_')[0]
                 h2 = v.hog_id.rsplit('_')[0]
-                data.append((hogid_lookup[h1], hogid_lookup[h2], w, ev))
+                lca = self.tax2taxid.get(graph[u][v]['lca'], -2)
+                rec = (hogid_lookup[h1], hogid_lookup[h2], w, ev, lca)
+                data.append(rec)
             df = pd.DataFrame.from_records(numpy.array(data, dtype=dtype))
             dfs.append(df)
         df = pd.concat(dfs, ignore_index=True)
@@ -148,7 +155,7 @@ class HDF5Writer:
                                    obj=as_array,
                                    expectedrows=len(as_array),
                                    createparents=True)
-        for col in ("HogRow1", "HogRow2", "Weight", "Evidence"):
+        for col in ("HogRow1", "HogRow2", "Weight", "Evidence", ):
             tab.colinstances[col].create_csindex()
 
     def get_taxid_from_hog_names(self, graph):
@@ -176,7 +183,7 @@ def write_as_hdf5(args, ham, out_dir):
                 continue
             if isinstance(genome, pyham.AncestralGenome):
                 taxid = writer.get_taxid_from_hog_names(tree_node.linear_synteny)
-                writer.add_graph_at_level(taxid, tree_node)
+                writer.add_graph_at_level(taxid, tree_node, args.date_edges)
 
 
 def write_output(args, ham, out_dir):
