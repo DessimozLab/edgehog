@@ -111,11 +111,16 @@ class HDF5Writer:
     def __enter__(self):
         self.oma_h5 = tables.open_file(self.oma_db, 'r')
         self.h5 = tables.open_file(self.fname, 'w', filters=tables.Filters(complevel=6, complib="blosc"))
+        self.tax2taxid = self._load_taxname_2_taxid()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.h5.close()
         self.oma_h5.close()
+
+    def _load_taxname_2_taxid(self):
+        tab = self.oma_h5.get_node("/Taxonomy")
+        return {row['Name'].decode(): int(row['NCBITaxonId']) for row in tab.read()}
 
     def _load_hog_at_level(self, taxid):
         try:
@@ -124,7 +129,7 @@ class HDF5Writer:
             tab = self.oma_h5.get_node('/Hogs_per_Level/tax{}'.format(taxid))
         return {row['ID'].decode(): row_nr for row_nr, row in enumerate(tab.read())}
 
-    def add_graph_at_level(self, taxid, tree_node):
+    def add_graph_at_level(self, taxid, tree_node, edge_date=False):
         hogid_lookup = self._load_hog_at_level(taxid)
         dfs, evidence_enum = [], {"linear": 1, "parsimonious": 2, "any": 4}
         for evidence, graph in zip(
@@ -133,11 +138,14 @@ class HDF5Writer:
             data, ev = [], evidence_enum[evidence]
 
             for u, v, w in graph.edges.data("weight", default=1):
-                data.append((hogid_lookup[u.hog_id], hogid_lookup[v.hog_id], w, ev))
-            df = pd.DataFrame.from_records(numpy.array(
-                data,
-                dtype=[("Hog1_idx", "i4"), ("Hog2_idx", "i4"), ("Weight", "i4"), ("Evidence", "i4")]
-            ))
+                rec = (hogid_lookup[u.hog_id], hogid_lookup[v.hog_id], w, ev)
+                if edge_date:
+                    rec += (self.tax2taxid.get(graph[u][v]["lca"],-2),) if evidence != "any" else (-2,)
+                data.append(rec)
+            dtype = [("Hog1_idx", "i4"), ("Hog2_idx", "i4"), ("Weight", "i4"), ("Evidence", "i4")]
+            if edge_date:
+                dtype.append(("LCA_taxid", "i4"))
+            df = pd.DataFrame.from_records(numpy.array(data, dtype))
             dfs.append(df)
         df = pd.concat(dfs, ignore_index=True)
         df.drop_duplicates(("Hog1_idx", "Hog2_idx"), keep="first", inplace=True)
@@ -169,7 +177,7 @@ def write_as_hdf5(args, ham, out_dir):
                 continue
             if isinstance(genome, pyham.AncestralGenome):
                 taxid = writer.get_taxid_from_hog_names(tree_node.linear_synteny)
-                writer.add_graph_at_level(taxid, tree_node)
+                writer.add_graph_at_level(taxid, tree_node, args.date_edges)
 
 
 def write_output(args, ham, out_dir):
