@@ -142,20 +142,24 @@ class HDF5Writer:
             for u, v, w in graph.edges.data("weight", default=1):
                 h1 = u.hog_id.rsplit('_')[0]
                 h2 = v.hog_id.rsplit('_')[0]
-                lca = self.tax2taxid.get(graph[u][v]['lca'], -2)
+                lca = self.tax2taxid.get(graph[u][v]['lca'], -1)
                 rec = (hogid_lookup[h1], hogid_lookup[h2], w, ev, lca)
                 data.append(rec)
             df = pd.DataFrame.from_records(numpy.array(data, dtype=dtype))
             dfs.append(df)
         df = pd.concat(dfs, ignore_index=True)
-        df.drop_duplicates(("HogRow1", "HogRow2"), keep="first", inplace=True)
-        as_array = df.to_records(index=False)
+        sumdf = df.groupby(("HogRow1", "HogRow2"), as_index=False).agg({
+            "Weight": "max",
+            "Evidence": "min",
+            "LCA_taxid": lambda x: x[x != -1].max() if not x[x != -1].empty else -1
+        })
+        as_array = sumdf.to_records(index=False)
         tab = self.h5.create_table("/AncestralGenomes/tax{}".format(taxid),
                                    "Synteny", description=AncestralSyntenyRels,
                                    obj=as_array,
                                    expectedrows=len(as_array),
                                    createparents=True)
-        for col in ("HogRow1", "HogRow2", "Weight", "Evidence", ):
+        for col in ("HogRow1", "HogRow2", "Weight", "Evidence", "LCA_taxid", ):
             tab.colinstances[col].create_csindex()
 
     def get_taxid_from_hog_names(self, graph):
