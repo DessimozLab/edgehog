@@ -103,9 +103,10 @@ def graph_to_df(graph, genome, edge_datation, label_dict=None, annotation_dict=N
 
 
 class HDF5Writer:
-    def __init__(self, fname, oma_db_fn):
+    def __init__(self, fname, oma_db_fn, date_edges=False):
         self.fname = fname
         self.oma_db = oma_db_fn
+        self.date_edges = date_edges
 
     def __enter__(self):
         self.oma_h5 = tables.open_file(self.oma_db, 'r')
@@ -142,7 +143,10 @@ class HDF5Writer:
             for u, v, w in graph.edges.data("weight", default=1):
                 h1 = u.hog_id.rsplit('_')[0]
                 h2 = v.hog_id.rsplit('_')[0]
-                lca = self.tax2taxid.get(graph[u][v]['lca'], -1)
+                if self.date_edges:
+                    lca = self.tax2taxid.get(graph[u][v]['lca'], -1)
+                else:
+                    lca = -1
                 rec = (hogid_lookup[h1], hogid_lookup[h2], w, ev, lca)
                 data.append(rec)
             df = pd.DataFrame.from_records(numpy.array(data, dtype=dtype))
@@ -178,7 +182,7 @@ class HDF5Writer:
 
 
 def write_as_hdf5(args, ham, out_dir):
-    with HDF5Writer(os.path.join(out_dir, "Synteny.h5"), args.hdf5) as writer:
+    with HDF5Writer(os.path.join(out_dir, "Synteny.h5"), args.hdf5, date_edges=args.date_edges) as writer:
         for tree_node in ham.taxonomy.tree.traverse("preorder"):
             try:
                 genome = tree_node.genome
@@ -187,7 +191,7 @@ def write_as_hdf5(args, ham, out_dir):
                 continue
             if isinstance(genome, pyham.AncestralGenome):
                 taxid = writer.get_taxid_from_hog_names(tree_node.linear_synteny)
-                writer.add_graph_at_level(taxid, tree_node, args.date_edges)
+                writer.add_graph_at_level(taxid, tree_node)
 
 
 def write_output(args, ham, out_dir):
