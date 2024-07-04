@@ -140,12 +140,17 @@ class HDF5Writer:
                 (tree_node.linear_synteny, tree_node.top_down_synteny, tree_node.bottom_up_synteny)):
             data = []
             ev = AncestralSyntenyRels.columns['Evidence'].enum[evidence]
+            print(f"process level {taxid} - graph {evidence} - |N|,|V| = {len(graph.nodes)},{len(graph.edges)}")
 
             for u, v, w in graph.edges.data("weight", default=1):
                 h1 = u.hog_id.rsplit('_')[0]
                 h2 = v.hog_id.rsplit('_')[0]
                 if self.date_edges:
-                    lca = self.tax2taxid.get(graph[u][v]['lca'], -1)
+                    try:
+                        lca_clade = graph[u][v]['lca']
+                        lca = self.tax2taxid.get(lca_clade, -1)
+                    except KeyError:
+                        lca = -1
                 else:
                     lca = -1
                 rec = (hogid_lookup[h1], hogid_lookup[h2], w, ev, lca)
@@ -167,6 +172,7 @@ class HDF5Writer:
                                    createparents=True)
         for col in ("HogRow1", "HogRow2", "Weight", "Evidence", "LCA_taxid", ):
             tab.colinstances[col].create_csindex()
+        print(f" hdf5 level {taxid} written: {len(tab)} rows.")
 
     def get_taxid_from_hog_names(self, graph):
         taxids = set([])
