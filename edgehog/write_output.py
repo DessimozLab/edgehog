@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import numpy
+import numpy as np
 import pandas as pd
 import os
 import networkx as nx
@@ -152,12 +153,13 @@ class HDF5Writer:
             df = pd.DataFrame.from_records(numpy.array(data, dtype=dtype))
             dfs.append(df)
         df = pd.concat(dfs, ignore_index=True)
-        sumdf = df.groupby(("HogRow1", "HogRow2"), as_index=False).agg({
+        sumdf = df.groupby(by=["HogRow1", "HogRow2"], as_index=False).agg({
             "Weight": "max",
             "Evidence": "min",
+            # -1 indicates 'n/a', all other values should be consistent.
             "LCA_taxid": lambda x: x[x != -1].max() if not x[x != -1].empty else -1
         })
-        as_array = sumdf.to_records(index=False)
+        as_array = sumdf.to_records(index=False, column_dtypes={"LCA_taxid": np.int32})
         tab = self.h5.create_table("/AncestralGenomes/tax{}".format(taxid),
                                    "Synteny", description=AncestralSyntenyRels,
                                    obj=as_array,
