@@ -126,6 +126,21 @@ If you don't have a HierarchicalGroups.orthoxml for your genomes, HOGs can be in
 
 ## Demo
 
+### Small test dataset
+
+We provide a small testdata set in the subdirectory `test_data`. `edgeHOG` can be run on this dataset with the following command:
+
+```bash
+edgehog --hog test_data/FastOMA_HOGs.orthoxml \
+                --species_tree test_data/species_tree.nwk \
+                --gff_directory test_data/gff3/ \
+                --date_edges \
+                --output_directory test-results
+```
+
+See the [test-data specific README](test_data/README.md) for more details how the dataset was assembled. The [Result section](#results) will discuss what the result files contain and how they can be interpreted.  
+
+### Large dataset (complete OMA database with thousands of genomes)
 `edgehog` can be run on the complete public OMA database using the data available on https://omabrowser.org/oma/current/. For that,
 one can download the HOGs ([oma-hogs.orthoXML.gz file](https://omabrowser.org/All/oma-hogs.orthoXML.gz)), the [species tree](https://omabrowser.org/All/speciestree.nwk) and 
 the [OMA HDF5 database](https://omabrowser.org/All/OmaServer.h5). 
@@ -140,6 +155,8 @@ wget https://omabrowser.org/All/OmaServer.h5
 gunzip oma-hogs.orthoXML.gz
 edgehog --hogs oma-hogs.orthoXML --hdf5 OmaServer.h5 --species_tree speciestree.nwk --date_edges --output_directory ./edghog_results
 ```
+
+
 
 ## Results
 
