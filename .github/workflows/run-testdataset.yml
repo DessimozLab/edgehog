@@ -29,7 +29,7 @@ jobs:
         poetry install
     - name: Run testdataset in test_data
       run: |
-        edgehog --hog test_data/FastOMA_HOGs.orthoxml \
+        poetry run edgehog --hog test_data/FastOMA_HOGs.orthoxml \
                 --species_tree test_data/species_tree.nwk \
                 --gff_directory test_data/gff3/ \
                 --date_edges \
