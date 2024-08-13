@@ -1,11 +1,10 @@
-
-name: Run tests of pyoma
+name: Run testdata set on supported python versions
 
 on:
   push:
-    branches: [ $default-branch, develop ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ $default-branch ]
+    branches: [ main ]
 
 jobs:
   build:
@@ -27,7 +26,7 @@ jobs:
       run: |
         poetry lock
         poetry show --tree
-        poetry install --dev
+        poetry install
     - name: Run testdataset in test_data
       run: |
         edgehog --hog test_data/FastOMA_HOGs.orthoxml \
