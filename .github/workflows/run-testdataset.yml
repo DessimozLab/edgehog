@@ -1,11 +1,10 @@
-
-name: Run tests of pyoma
+name: Run testdata set on supported python versions
 
 on:
   push:
-    branches: [ $default-branch, develop ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ $default-branch ]
+    branches: [ main ]
 
 jobs:
   build:
@@ -27,11 +26,16 @@ jobs:
       run: |
         poetry lock
         poetry show --tree
-        poetry install --dev
+        poetry install
     - name: Run testdataset in test_data
       run: |
-        edgehog --hog test_data/FastOMA_HOGs.orthoxml \
+        poetry run edgehog --hog test_data/FastOMA_HOGs.orthoxml \
                 --species_tree test_data/species_tree.nwk \
                 --gff_directory test_data/gff3/ \
                 --date_edges \
                 --output_directory test-results
+
+    - name: check produced results
+      run: |
+        ls test-results
+        gunzip -c test-results/12_linearized_synteny_graph_edges.tsv.gz | head -n 10
