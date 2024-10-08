@@ -79,10 +79,10 @@ def get_representative_hog_for_gene(ham, hogxml_entries):
     if best_hog:
         return best_hog
     return gene
-         
+            
 
 # Create a feature "synteny" that stores a synteny graph for the current extant genome
-def assign_extant_synteny(genome, gene_dict, ham): 
+def assign_extant_synteny(genome, gene_dict, ham, orient_edges): 
     graph = nx.Graph(genome = genome)
     contiguity_dict = dict()
     gene_keys = list(gene_dict.keys())
@@ -98,7 +98,19 @@ def assign_extant_synteny(genome, gene_dict, ham):
             graph.add_node(gene, **gene_dict[gene_keys[i]], contig = contig)
             if contig == old_contig:
                 # connect genes only if they are on the same contig
-                graph.add_edge(old_gene, gene, weight = 1, children = [None], extant_descendants = [None])
+                graph.add_edge(old_gene, gene, weight=1, unidirectional=0, convergent=0, divergent=0, children = [None], extant_descendants = [None])
+                if orient_edges:
+                    old_gene_strand = gene_dict[gene_keys[i-1]]['strand']
+                    gene_strand = gene_dict[gene_keys[i]]['strand']
+                    try:
+                        if old_gene_strand == gene_strand:
+                            graph[old_gene][gene]['unidirectional'] = 1
+                        elif old_gene_strand == "+":
+                            graph[old_gene][gene]['convergent'] = 1
+                        elif old_gene_strand == "-":
+                            graph[old_gene][gene]['divergent'] = 1
+                    except:
+                        pass
             old_gene, old_contig = gene, contig
     # for cc in nx.connected_components(graph):
     #     if len(cc > 1):
@@ -109,18 +121,17 @@ def assign_extant_synteny(genome, gene_dict, ham):
     return graph, contiguity_dict
 
 
-def gff_to_graph(ham, genome, gff, hogxml_entries, protein_id_to_hogxml_entry):
+def gff_to_graph(ham, genome, gff, hogxml_entries, protein_id_to_hogxml_entry, orient_edges):
     gene_dict, protein_dict = gff_to_dict(gff)
     gene_dict = intersect_hogxml_and_gff(genome, hogxml_entries[genome], protein_id_to_hogxml_entry[genome], protein_dict, gene_dict)
-    graph, contiguity_dict = assign_extant_synteny(genome, gene_dict, ham)
+    graph, contiguity_dict = assign_extant_synteny(genome, gene_dict, ham, orient_edges)
     return graph, contiguity_dict
     
     
-def init_extant_graphs(cpu, ham, hogs_file, gff_directory, hogxml_entries, protein_id_to_hogxml_entry):
+def init_extant_graphs(cpu, ham, hogs_file, gff_directory, hogxml_entries, protein_id_to_hogxml_entry, orient_edges):
     print('###################################')
     print('Initializing synteny graphs of extant genomes ...')
-    ext_genomes = ham.get_list_extant_genomes()
-    
+    ext_genomes = ham.get_list_extant_genomes()    
     genome_to_gff_dict = get_gffs_of_extant_genomes(gff_directory, ext_genomes)
     if cpu == 1:
         graphs = list()
@@ -128,7 +139,7 @@ def init_extant_graphs(cpu, ham, hogs_file, gff_directory, hogxml_entries, prote
         i = 1
         for genome in ext_genomes:
             print('processing extant genome %d/%d: %s' % (i, len(ext_genomes), genome.name))
-            graph, contiguity_dict = gff_to_graph(ham, genome, genome_to_gff_dict[genome], hogxml_entries, protein_id_to_hogxml_entry)
+            graph, contiguity_dict = gff_to_graph(ham, genome, genome_to_gff_dict[genome], hogxml_entries, protein_id_to_hogxml_entry, orient_edges)
             graphs.append(graph)
             contiguity_dicts.append(contiguity_dict)
             i += 1
@@ -148,7 +159,7 @@ def init_extant_graphs(cpu, ham, hogs_file, gff_directory, hogxml_entries, prote
     return ham
 
 
-def init_extant_graphs_from_hdf5(ham, hdf5_file):
+def init_extant_graphs_from_hdf5(ham, hdf5_file, orient_edges):
     print('###################################')
     print('Initializing synteny graphs of extant genomes ...')
     from pyoma.browser import db
@@ -161,6 +172,7 @@ def init_extant_graphs_from_hdf5(ham, hdf5_file):
         graph = nx.Graph()
         contiguity_dict = dict()
         old_gene = ham.get_gene_by_id(proteins[0]['EntryNr'])
+        old_gene_strand = proteins[0]['LocusStrand']
         old_contig = proteins[0]['Chromosome']
         graph.add_node(old_gene, contig = old_contig)
         for i in range(1, len(proteins)):
@@ -168,7 +180,19 @@ def init_extant_graphs_from_hdf5(ham, hdf5_file):
             contig = proteins[i]['Chromosome']
             graph.add_node(gene, contig = contig)
             if contig == old_contig:
-                graph.add_edge(gene, old_gene, weight=1, children = [None], extant_descendants = [None])
+                graph.add_edge(gene, old_gene, weight=1, unidirectional=0, convergent=0, divergent=0, children = [None], extant_descendants = [None])
+                if orient_edges:
+                    old_gene_strand = proteins[i-1]['LocusStrand']
+                    gene_strand = proteins[i]['LocusStrand']
+                    try:
+                        if old_gene_strand == gene_strand:
+                            graph[old_gene][gene]['unidirectional'] = 1
+                        elif old_gene_strand == 1:
+                            graph[old_gene][gene]['convergent'] = 1
+                        elif old_gene_strand == -1:
+                            graph[old_gene][gene]['divergent'] = 1
+                    except:
+                        pass
             old_gene, old_contig = gene, contig
         # for cc in nx.connected_components(graph):
         #     if len(cc > 1):

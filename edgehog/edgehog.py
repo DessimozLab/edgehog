@@ -25,6 +25,7 @@ def main():
     arg_parser.add_argument('--gff_directory', type=str, help='path to directory with the gffs of extant genomes '
                             '(each gff file must be named according to the name of an extant genome / leaf on the species tree)')
     arg_parser.add_argument('--hdf5', type=str, help='path to the hdf5 file (alternative to gff_directory to run edgeHOG on the entire OMA database)')
+    arg_parser.add_argument('--orient_edges', action='store_true', help='whether the transcriptional orientation of edges should be predicted')    
     arg_parser.add_argument('--date_edges', action='store_true', help='whether the age of edges in extant species should be predicted')
     arg_parser.add_argument('--phylostratify', action='store_true', help='whether the number of edge retention, gain and loss should be analyzed for each node of the species tree')
     arg_parser.add_argument('--max_gaps', type=int, help='max_gaps can be seen as the theoritical maximal number of consecutive novel genes that can emerge between two older genes (default = 3), '
@@ -49,20 +50,20 @@ def main():
 
     start_time = time.time()
     if args.gff_directory:
-        init_extant_graphs(1, ham, args.hogs, args.gff_directory, hogxml_entries, protein_id_to_hogxml_entry)
+        init_extant_graphs(1, ham, args.hogs, args.gff_directory, hogxml_entries, protein_id_to_hogxml_entry, args.orient_edges)
     elif args.hdf5:
-        init_extant_graphs_from_hdf5(ham, args.hdf5)
+        init_extant_graphs_from_hdf5(ham, args.hdf5, args.orient_edges)
 
     end_time = time.time()
     timer["preprocessing - loading extant synteny"] = end_time - start_time
 
     start_time = time.time()
-    leaves_to_root_synteny_propagation(ham, args.max_gaps)
+    leaves_to_root_synteny_propagation(ham, args.max_gaps, args.orient_edges)
     end_time = time.time()
     timer["bottom-up phase"] = end_time - start_time
 
     start_time = time.time()
-    root_to_leaves_edge_trimming(ham)
+    root_to_leaves_edge_trimming(ham, args.orient_edges)
     end_time = time.time()
     timer["top-down phase"] = end_time - start_time
 

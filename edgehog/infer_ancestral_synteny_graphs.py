@@ -14,6 +14,55 @@ def print_graph_info(genome, graph):
                 (genome.name, graph.number_of_nodes(), graph.number_of_edges(), 
                  nx.number_connected_components(graph), average_degree))
 
+####################################################################################
+# GOAL:
+# Assign transcriptional orientations' weight in a reconnected edge based on
+# weights of the 2 trimmed edges
+ 
+# Reconnection of edges (when we model gene emergence):
+#   u{A,B}: weight of unidirectional context -> -> in edges A and B
+# 	d{A,B}: weight of divergent context <- -> in edges A and B
+# 	c{A,B}: weight of convergent context -> <- in edges A and 
+# When middle gene is removed:
+# 	-> (->) -> becomes -> -> Hence u = uA + uB or uB + uA
+# 	-> (<-) -> becomes -> -> Hence u = cA + dB or dA + cB
+# 	-> (<-) <- becomes -> <- Hence c = cA + uB or uA + cB
+# 	<- (->) -> becomes <- -> Hence d = dA + uB or uA + dB
+# But the weight of a reconnected edge is min(wA,wB) so u+c+d should be equal to min(wA,wB)
+# This is done like this:
+#   f = min(wA, wB)
+# 	tot = usum + csum + dsum
+# 	u = f * usum / tot
+# 	c = f * csum / tot
+# 	d = f * dsum / tot
+####################################################################################
+def orient_reconnected_edges(wA, uA, cA, dA, wB, uB, cB, dB):
+    usum = csum = dsum = 0
+    if uA > 0:
+        if uB > 0:
+            usum += 2 * (uA + uB)
+        if cB > 0:
+            csum += uA + cB
+        if dB > 0:
+            dsum += uA + dB
+    if cA > 0:
+        if dB > 0:
+            usum += cA + dB
+        if uB > 0:
+            csum += cA + uB
+    if dA > 0:
+        if cB > 0:
+            usum += dA + cB
+        if uB > 0:
+            dsum += dA + uB
+    tot = usum + csum + dsum
+    if tot > 0:
+        f = min(wA, wB)
+        u = f * usum / tot
+        c = f * csum / tot
+        d = f * dsum / tot
+        return(u,c,d)
+    return(0,0,0)
 
 ####################################################################################
 # GOAL:
@@ -63,7 +112,7 @@ def print_graph_info(genome, graph):
 #                    A-E 
 #    weight =         8
 ####################################################################################     
-def build_transitive_graph(graph, max_gap_length = 2):
+def build_transitive_graph(graph, orient_edges, max_gap_length = 2):
     real_edge_to_transitive_edge = dict()
     reconnected_edge_to_real_edges = dict()
     cnt_removed_nodes = 0
@@ -88,6 +137,17 @@ def build_transitive_graph(graph, max_gap_length = 2):
                                             weight = min(graph[left_gene][gene]["weight"], graph[gene][right_gene]["weight"]),
                                             children = list(set(graph[left_gene][gene]["children"] + graph[gene][right_gene]["children"])),
                                             extant_descendants = list(set(graph[left_gene][gene]["extant_descendants"] + graph[gene][right_gene]["extant_descendants"])))
+                             if orient_edges:
+                                 try:
+                                     print(left_gene.hog_id, right_gene.hog_id)
+                                 except:
+                                     print(left_gene.prot_id, right_gene.prot_id)
+                                 wA, uA, cA, dA = graph[left_gene][gene]["weight"], graph[left_gene][gene]["unidirectional"], graph[left_gene][gene]["convergent"], graph[left_gene][gene]["divergent"]
+                                 wB, uB, cB, dB = graph[gene][right_gene]["weight"], graph[gene][right_gene]["unidirectional"], graph[gene][right_gene]["convergent"], graph[gene][right_gene]["divergent"]
+                                 u, c, d = orient_reconnected_edges(wA, uA, cA, dA, wB, uB, cB, dB)
+                                 graph[left_gene][right_gene]['unidirectional'] = u
+                                 graph[left_gene][right_gene]['convergent'] = c
+                                 graph[left_gene][right_gene]['divergent'] = d
                              # if gene that will be removed has already been reconnected:
                              if (left_gene, gene) in reconnected_edge_to_real_edges:
                                  for e in reconnected_edge_to_real_edges[(left_gene, gene)]:
@@ -127,7 +187,7 @@ def build_transitive_graph(graph, max_gap_length = 2):
 #   the more likely ancestral genes belonging to HOGa and HOGb 
 #   were adjacent to each other in the ancestor of these genomes
 #################################################################################### 
-def leaves_to_root_synteny_propagation(ham, max_gaps):
+def leaves_to_root_synteny_propagation(ham, max_gaps, orient_edges):
     print('###################################')
     print('Bottom-up_phase: propagate count of adjacencies observed between two genes from children nodes to their parent node on the species tree '
           '(as long as the parent node has the two ancestral genes)')
@@ -160,9 +220,10 @@ def leaves_to_root_synteny_propagation(ham, max_gaps):
                 # to propagate the synteny graph to the higher level.
                 #
                 # The trimmed working copy is eventually stored as a transitive graph and will be used subsequently in the top-down phase
-                real_edge_to_transitive_edge = build_transitive_graph(child_working_graph, max_gaps)
+                real_edge_to_transitive_edge = build_transitive_graph(child_working_graph, orient_edges, max_gaps)
                 child_transitive_graph = nx.Graph()
-                for gene, adjacent_gene, weight in child_working_graph.edges.data('weight', default=1):
+                for gene, adjacent_gene, edge_data in child_working_graph.edges.data():
+                    weight = edge_data['weight']
                     if(gene.parent is not None and adjacent_gene.parent is not None and gene.parent != adjacent_gene.parent):
                         assert gene.parent in graph.nodes
                         assert adjacent_gene.parent in graph.nodes
@@ -178,9 +239,17 @@ def leaves_to_root_synteny_propagation(ham, max_gaps):
                             graph[ancestral_edge[0]][ancestral_edge[1]]['weight'] += weight
                             graph[ancestral_edge[0]][ancestral_edge[1]]['children'].append(child)
                             graph[ancestral_edge[0]][ancestral_edge[1]]['extant_descendants'] += extant_descendants
+                            if orient_edges:
+                                graph[ancestral_edge[0]][ancestral_edge[1]]['unidirectional'] += edge_data['unidirectional']
+                                graph[ancestral_edge[0]][ancestral_edge[1]]['convergent'] += edge_data['convergent']
+                                graph[ancestral_edge[0]][ancestral_edge[1]]['divergent'] += edge_data['divergent']
                         else:
                             # create edge otherwise, with the same weight as in current supporting child
                             graph.add_edge(*ancestral_edge, weight = weight, children = [child], extant_descendants = extant_descendants)
+                            if orient_edges:
+                                graph[ancestral_edge[0]][ancestral_edge[1]]['unidirectional'] = edge_data['unidirectional']
+                                graph[ancestral_edge[0]][ancestral_edge[1]]['convergent'] = edge_data['convergent']
+                                graph[ancestral_edge[0]][ancestral_edge[1]]['divergent'] = edge_data['divergent']
                                 
                         if not gene.parent in child_transitive_graph.nodes:
                             child_transitive_graph.add_node(gene.parent, real_gene = gene)
@@ -188,8 +257,16 @@ def leaves_to_root_synteny_propagation(ham, max_gaps):
                             child_transitive_graph.add_node(adjacent_gene.parent, real_gene = adjacent_gene)
                         if child_transitive_graph.has_edge(*ancestral_edge):
                             child_transitive_graph[gene.parent][adjacent_gene.parent]['weight'] += weight
+                            if orient_edges:
+                                child_transitive_graph[gene.parent][adjacent_gene.parent]['unidirectional'] += edge_data['unidirectional']
+                                child_transitive_graph[gene.parent][adjacent_gene.parent]['convergent'] += edge_data['convergent']
+                                child_transitive_graph[gene.parent][adjacent_gene.parent]['divergent'] += edge_data['divergent']
                         else:
                             child_transitive_graph.add_edge(*ancestral_edge, weight = weight)
+                            if orient_edges:
+                                child_transitive_graph[gene.parent][adjacent_gene.parent]['unidirectional'] = edge_data['unidirectional']
+                                child_transitive_graph[gene.parent][adjacent_gene.parent]['convergent'] = edge_data['convergent']
+                                child_transitive_graph[gene.parent][adjacent_gene.parent]['divergent'] = edge_data['divergent']
                         
                 child.add_feature('transitive_synteny', child_transitive_graph)
                 child.add_feature('real_edge_to_transitive_edge', real_edge_to_transitive_edge)
@@ -210,7 +287,7 @@ def leaves_to_root_synteny_propagation(ham, max_gaps):
 #   if this adjacency is observed only in one child and not in the outgroup
 #   (in this case, the LCA for this adjacency should be in the child lineage)    
 ####################################################################################           
-def root_to_leaves_edge_trimming(ham):
+def root_to_leaves_edge_trimming(ham, orient_edges):
     print('###################################')
     print('Top-down phase: prune any adjacency propagated before the last ancestor in which this adjacency is inferred to have emerged ')
     nb_ancestors = ham.taxonomy.tree.n_internal_nodes
@@ -227,23 +304,42 @@ def root_to_leaves_edge_trimming(ham):
             edges_to_remove = list()
             graph = tree_node.bottom_up_synteny.copy()
             k = 0
-            for gene, adjacent_gene, weight in graph.edges.data('weight', default=1):
+            for gene, adjacent_gene, edge_data in graph.edges.data():
+                weight = edge_data['weight']
+                if orient_edges:
+                    initial_u = edge_data['unidirectional']
+                    initial_c = edge_data['convergent']
+                    initial_d = edge_data['divergent']
                 k += 1
                 remove_edge = True
+                if orient_edges:
+                    u = c = d = 0
                 for child in tree_node.children:
                     child_transitive_graph = child.transitive_synteny
                     try:
                         child_weight = child_transitive_graph[gene][adjacent_gene]['weight']
+                        if orient_edges:
+                            child_u = child_transitive_graph[gene][adjacent_gene]['unidirectional']
+                            child_c = child_transitive_graph[gene][adjacent_gene]['convergent']
+                            child_d = child_transitive_graph[gene][adjacent_gene]['divergent']
                     except:
-                        child_weight = 0
+                        child_weight = child_u = child_c = child_d = 0
                     # if at least two children contribute to the weight of the edge,
                     # that means the edge was likely present in the current node
                     if child_weight > 0 and child_weight < weight:
                         remove_edge = False
                         graph[gene][adjacent_gene]['nb_internal_nodes_from_ancestor_with_updated_weight'] = 0
-                        break
+                        if orient_edges:
+                            if child_u > 0 and child_u < initial_u:
+                                u = initial_u
+                            if child_c > 0 and child_c < initial_c:
+                                c = initial_c
+                            if child_d > 0 and child_d < initial_d:
+                                d = initial_d
+                        else:
+                            break
                 # if edge is only present in one children lineage, check if it is supported by outgroup (retain) or not (discard)
-                if remove_edge and tree_node.up:
+                if (remove_edge or orient_edges) and tree_node.up:
                     try:
                         # either there was some reconnection between genes because of insertion in descendant
                         transitive_edge = tree_node.real_edge_to_transitive_edge[(gene, adjacent_gene)]
@@ -267,8 +363,23 @@ def root_to_leaves_edge_trimming(ham):
                             # if counter high: possible HGT or edge lost once and reemerged afterwards (convergent evolution)
                             if 'nb_internal_nodes_from_ancestor_with_updated_weight' in ancestral_graph[transitive_edge[0]][transitive_edge[1]]:
                                 graph[gene][adjacent_gene]['nb_internal_nodes_from_ancestor_with_updated_weight'] += ancestral_graph[transitive_edge[0]][transitive_edge[1]]['nb_internal_nodes_from_ancestor_with_updated_weight']
+                        if orient_edges:
+                            ancestral_u = ancestral_graph[transitive_edge[0]][transitive_edge[1]]['unidirectional']
+                            ancestral_c = ancestral_graph[transitive_edge[0]][transitive_edge[1]]['convergent']
+                            ancestral_d = ancestral_graph[transitive_edge[0]][transitive_edge[1]]['divergent']
+                            if ancestral_u > 0:
+                                u = initial_u
+                            if ancestral_c > 0:
+                                c = initial_c
+                            if ancestral_d > 0:
+                                d = initial_d
                 if remove_edge:
                     edges_to_remove.append((gene, adjacent_gene))
+                elif orient_edges:
+                    if u + c + d == 0:
+                        u = initial_u
+                        c = initial_c
+                        d = initial_d
             graph.remove_edges_from(edges_to_remove)
             tree_node.add_feature('top_down_synteny', graph)
             
@@ -405,8 +516,4 @@ def linearize_graphs(ham):
                             removed_edges.pop(idx)
                     
             tree_node.add_feature('linear_synteny', graph)
-            
-            
-
-        
         

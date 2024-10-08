@@ -36,11 +36,13 @@ def label_nodes(graph):
     return label_dict, annotation_dict
 
 
-def graph_to_df(graph, genome, edge_datation, label_dict=None, annotation_dict=None, include_extant_genes=False):
+def graph_to_df(graph, genome, edge_datation, orient_edges, label_dict=None, annotation_dict=None, include_extant_genes=False):
     edge_dict = dict()
     singleton_dict = dict()
     column_names = ['gene1', 'gene2', 'weight', 'contiguous_region',
                     'nb_internal_nodes_from_ancestor_with_updated_weight', 'supporting_children']
+    if orient_edges:
+        column_names += ['predicted_transcriptional_orientation', 'orientation_score']
     if include_extant_genes:
         column_names += ['gene1_extant_annotations', 'gene2_extant_annotations']
     if edge_datation:
@@ -51,12 +53,20 @@ def graph_to_df(graph, genome, edge_datation, label_dict=None, annotation_dict=N
     car_counter = 0
     for cc in nx.connected_components(graph):
         if len(cc) > 1:
-            for u, v, w in graph.subgraph(cc).edges.data("weight", default=1):
+            for u, v, edge_data in graph.subgraph(cc).edges.data():
+                w = edge_data['weight']
                 edge_dict['contiguous_region'].append(car_counter)
                 edge_dict['weight'].append(w)
                 if isinstance(genome, pyham.AncestralGenome):
                     edge_dict['gene1'].append(label_dict[u])
                     edge_dict['gene2'].append(label_dict[v])
+                    
+                    if orient_edges:
+                        # in case of equalities, here is the hierarchy: unidirectional > divergent > convergent 
+                        e_u, e_d, e_c = edge_data['unidirectional'], edge_data['divergent'], edge_data['convergent'] 
+                        edge_dict['predicted_transcriptional_orientation'].append(['unidirectional','divergent','convergent',][numpy.argmax([e_u, e_d, e_c])])
+                        edge_dict['orientation_score'].append(round(max(e_u,e_c,e_d)))
+                        
                     if include_extant_genes:
                         edge_dict['gene1_extant_annotations'].append(annotation_dict[u])
                         edge_dict['gene2_extant_annotations'].append(annotation_dict[v])
@@ -71,6 +81,10 @@ def graph_to_df(graph, genome, edge_datation, label_dict=None, annotation_dict=N
                     edge_dict['supporting_children'].append(None)
                     edge_dict['gene1'].append(u.prot_id)
                     edge_dict['gene2'].append(v.prot_id)
+                    if orient_edges:
+                        e_u, e_d, e_c = edge_data['unidirectional'], edge_data['divergent'], edge_data['convergent'] 
+                        edge_dict['predicted_transcriptional_orientation'].append(['unidirectional','divergent','convergent',][numpy.argmax([e_u, e_d, e_c])])
+                        edge_dict['orientation_score'].append(round(max(e_u,e_d,e_c)))
                     if include_extant_genes:
                         edge_dict['gene1_extant_annotations'].append(u.prot_id)
                         edge_dict['gene2_extant_annotations'].append(v.prot_id)
@@ -83,6 +97,9 @@ def graph_to_df(graph, genome, edge_datation, label_dict=None, annotation_dict=N
             u = list(cc)[0]
             for key in ['contiguous_region', 'weight', 'gene2', 'nb_internal_nodes_from_ancestor_with_updated_weight', 'supporting_children']:
                 singleton_dict[key].append(None)
+            if orient_edges:
+                singleton_dict['predicted_transcriptional_orientation'].append(None)
+                singleton_dict['orientation_score'].append(None)
             if edge_datation:
                 singleton_dict['predicted_edge_lca'].append(None)
                 singleton_dict['predicted_edge_age_relative_to_root'].append(None)
@@ -201,7 +218,7 @@ def write_output(args, ham, out_dir):
         if isinstance(genome, pyham.AncestralGenome):
             label_dict, annotation_dict = label_nodes(tree_node.bottom_up_synteny)
 
-            df = graph_to_df(tree_node.bottom_up_synteny, genome, False, label_dict,
+            df = graph_to_df(tree_node.bottom_up_synteny, genome, False, args.orient_edges, label_dict,
                              annotation_dict, args.include_extant_genes)
             df.to_csv(os.path.join(out_dir, str(g) + '_bottom-up_synteny_graph_edges.tsv.gz'),
                       compression='gzip',
@@ -209,7 +226,7 @@ def write_output(args, ham, out_dir):
                       header=True,
                       sep='\t')
 
-            df = graph_to_df(tree_node.top_down_synteny, genome, args.date_edges, label_dict,
+            df = graph_to_df(tree_node.top_down_synteny, genome, args.date_edges, args.orient_edges, label_dict,
                              annotation_dict, args.include_extant_genes)
             df.to_csv(os.path.join(out_dir, str(g) + '_top-down_synteny_graph_edges.tsv.gz'),
                       compression='gzip',
@@ -217,7 +234,7 @@ def write_output(args, ham, out_dir):
                       header=True,
                       sep='\t')
 
-            df = graph_to_df(tree_node.linear_synteny, genome, args.date_edges, label_dict,
+            df = graph_to_df(tree_node.linear_synteny, genome, args.date_edges, args.orient_edges, label_dict,
                              annotation_dict, args.include_extant_genes)
             df.to_csv(os.path.join(out_dir, str(g) + '_linearized_synteny_graph_edges.tsv.gz'),
                       compression='gzip',
@@ -226,7 +243,7 @@ def write_output(args, ham, out_dir):
                       sep='\t')
         else:
             # extant genome
-            df = graph_to_df(tree_node.bottom_up_synteny, genome, edge_datation=args.date_edges)
+            df = graph_to_df(tree_node.bottom_up_synteny, genome, args.date_edges, args.orient_edges)
             df.to_csv(os.path.join(out_dir, str(g) + '_extant_synteny_graph_edges.tsv.gz'),
                       compression='gzip',
                       index=False,
