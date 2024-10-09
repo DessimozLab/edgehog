@@ -33,6 +33,7 @@ jobs:
                 --species_tree test_data/species_tree.nwk \
                 --gff_directory test_data/gff3/ \
                 --date_edges \
+                --orient_edges \
                 --output_directory test-results
 
     - name: check produced results
