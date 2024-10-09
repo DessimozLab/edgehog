@@ -47,6 +47,13 @@ Python can be installed directly from its `apt` system using `apt install python
 pip install edgehog
 ```
 
+To enable hdf5 support and direct reading of genome data from OMA's HDF5 database, you need to enable 
+the `oma` extra during installation:
+
+```bash
+pip install edgehog[oma]
+```
+
 The dependencies are version pinned and will automatically be installed as well. 
 
 ### From sources
@@ -57,7 +64,7 @@ pip install poetry  # poetry is used as build and dependency resolving system.
 
 git clone https://github.com/dessimozlab/edgehog.git
 cd edgehog
-poetry install
+poetry install --extra oma
 ```
 
 ## Usage

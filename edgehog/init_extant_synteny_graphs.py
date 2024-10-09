@@ -162,8 +162,14 @@ def init_extant_graphs(cpu, ham, hogs_file, gff_directory, hogxml_entries, prote
 def init_extant_graphs_from_hdf5(ham, hdf5_file, orient_edges):
     print('###################################')
     print('Initializing synteny graphs of extant genomes ...')
-    from pyoma.browser import db
-    from pyoma.browser.models import Genome
+    try:
+        from pyoma.browser import db
+        from pyoma.browser.models import Genome
+    except ImportError:
+        print(f"pyoma library is required to load data from HDF5 file. "
+              f"Please install edgehog with the `oma` extra activated, i.e. `pip install edgehog[oma]`.")
+        import sys
+        sys.exit(2)
     h5 = db.Database(hdf5_file)
     ext_genomes = [Genome(h5, g) for g in h5.get_hdf5_handle().root.Genome.read()]
     for genome in ext_genomes:
