@@ -146,22 +146,30 @@ class HDF5Writer:
             tab = self.oma_h5.get_node('/Hogs_per_Level/tax{}'.format(taxid))
         return {row['ID'].decode(): row_nr for row_nr, row in enumerate(tab.read())}
 
-    def add_graph_at_level(self, taxid, tree_node, edge_date=False):
+    def add_graph_at_level(self, taxid, tree_node, edge_date=False, orient_edges=False):
         hogid_lookup = self._load_hog_at_level(taxid)
         dfs, evidence_enum = [], {"linear": 1, "parsimonious": 2, "any": 4}
+        orient_enum = {'unidirectional': 1, 'divergent': 2, 'convergent': 4}
         for evidence, graph in zip(
                 ("linear", "parsimonious", "any"),
                 (tree_node.linear_synteny, tree_node.top_down_synteny, tree_node.bottom_up_synteny)):
             data, ev = [], evidence_enum[evidence]
 
-            for u, v, w in graph.edges.data("weight", default=1):
+            for u, v, edge_data in graph.edges.data():
+                w = edge_data.get("weight", default=1)
                 rec = (hogid_lookup[u.hog_id], hogid_lookup[v.hog_id], w, ev)
                 if edge_date:
-                    rec += (self.tax2taxid.get(graph[u][v]["lca"],-2),) if evidence != "any" else (-2,)
+                    rec += (self.tax2taxid.get(edge_data["lca"],-2),) if evidence != "any" else (-2,)
+                if orient_edges:
+                    orient_weights = numpy.array(list(map(lambda o: edge_data[o], orient_enum.keys())))
+                    orientation = orient_enum[list(orient_enum)[numpy.argmax(orient_weights)]]
+                    rec += (orientation, round(orient_weights.max()))
                 data.append(rec)
             dtype = [("Hog1_idx", "i4"), ("Hog2_idx", "i4"), ("Weight", "i4"), ("Evidence", "i4")]
             if edge_date:
                 dtype.append(("LCA_taxid", "i4"))
+            if orient_edges:
+                dtype.extend([("Orientation", "i4"), ("OrientationScore", 'i4')])
             df = pd.DataFrame.from_records(numpy.array(data, dtype))
             dfs.append(df)
         df = pd.concat(dfs, ignore_index=True)
