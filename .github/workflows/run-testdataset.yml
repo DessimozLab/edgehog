@@ -1,0 +1,41 @@
+name: Run testdata set on supported python versions
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{matrix.python-version}}
+    - name: Install poetry
+      uses: Gr1N/setup-poetry@v9
+    - name: Install dependencies and package
+      run: |
+        poetry lock
+        poetry show --tree
+        poetry install
+    - name: Run testdataset in test_data
+      run: |
+        poetry run edgehog --hog test_data/FastOMA_HOGs.orthoxml \
+                --species_tree test_data/species_tree.nwk \
+                --gff_directory test_data/gff3/ \
+                --date_edges \
+                --output_directory test-results
+
+    - name: check produced results
+      run: |
+        ls test-results
+        gunzip -c test-results/12_linearized_synteny_graph_edges.tsv.gz | head -n 10
