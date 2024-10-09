@@ -149,16 +149,22 @@ class HDF5Writer:
         return {row['ID'].decode(): row_nr for row_nr, row in enumerate(tab.read())}
 
     def add_graph_at_level(self, taxid, tree_node):
-        from pyoma.browser.tablefmt import AncestralSyntenyRels
+        try:
+            from pyoma.browser.tablefmt import AncestralSyntenyRels
+        except ImportError:
+            print(f"pyoma library is required to write output as HDF5 files. "
+                  f"Please install edgehog with the `oma` extra activated, i.e. `pip install edgehog[oma]`.")
+            import sys
+            sys.exit(2)
         hogid_lookup = self._load_hog_at_level(taxid)
         dtype = tables.dtype_from_descr(AncestralSyntenyRels)
+        orient_enum = AncestralSyntenyRels.columns['Orientation'].enum
         dfs = []
         for evidence, graph in zip(
                 ("linearized", "parsimonious", "any"),
                 (tree_node.linear_synteny, tree_node.top_down_synteny, tree_node.bottom_up_synteny)):
             data = []
             ev = AncestralSyntenyRels.columns['Evidence'].enum[evidence]
-            orient_enum = {'unidirectional': 1, 'divergent': 2, 'convergent': 4}
             print(f"process level {taxid} - graph {evidence} - |N|,|V| = {len(graph.nodes)},{len(graph.edges)}")
 
             for u, v, edge_data in graph.edges.data():
@@ -169,17 +175,18 @@ class HDF5Writer:
                 if self.date_edges:
                     try:
                         lca_clade = edge_data['lca']
-                        lca = self.tax2taxid.get(lca_clade, -1)
+                        lca = self.tax2taxid[lca_clade]
                     except KeyError:
-                        lca = -1
+                        pass
                 if self.orient_edges:
+                    keys = ['unidirectional', 'divergent', 'convergent']
                     try:
-                        orient_weights = numpy.array(list(map(lambda o: edge_data[o], orient_enum.keys())))
+                        orient_weights = numpy.array(list(map(lambda o: edge_data[o], keys)))
                     except KeyError:
                         pass
                     else:
-                        orient = orient_enum[list(orient_enum)[numpy.argmax(orient_weights)]]
-                        orient_score = round(orient_weights.max())
+                        orient = orient_enum[keys[numpy.argmax(orient_weights)]]
+                        orient_score = orient_weights.max()
                 rec = (hogid_lookup[h1], hogid_lookup[h2], w, ev, lca, orient, orient_score)
                 data.append(rec)
             df = pd.DataFrame.from_records(numpy.array(data, dtype=dtype))
