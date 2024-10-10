@@ -40,4 +40,7 @@ jobs:
       run: |
         ls test-results
         gunzip -c test-results/12_linearized_synteny_graph_edges.tsv.gz | head -n 10
-        gunzip -c test-results/12_linearized_synteny_graph_edges.tsv.gz | awk '/HOG_HOG:0000217_13\tHOG_HOG:0000282_13/{c = $2 > 0} END {exit !c}'
+    
+    - name: check a specific relation exists
+      run: |
+        gunzip -c test-results/12_linearized_synteny_graph_edges.tsv.gz | awk '/(HOG_HOG:0000285_13\tHOG_HOG:0000284_13)|(HOG_HOG:0000284_13\tHOG_HOG:0000285_13)/{count++; print $0} END {exit (count == 1 ? 0 : 1)}'
