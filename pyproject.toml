@@ -15,12 +15,12 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
-numpy = "^1.20.0"
+numpy = ">=1.20.0,<3"
 pandas = ">1.3.0,<3.0.0"
 networkx = ">=2.8,<4"
 pyham = "^1.1.11"
 ete3 = "^3.1.2"
-pyoma = {version = "^0.13.3", optional = true}
+pyoma = {version = ">=0.13.3", optional = true}
 
 [tool.poetry.extras]
 oma = ["pyoma"]
