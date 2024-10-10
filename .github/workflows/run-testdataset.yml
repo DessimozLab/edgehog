@@ -40,3 +40,4 @@ jobs:
       run: |
         ls test-results
         gunzip -c test-results/12_linearized_synteny_graph_edges.tsv.gz | head -n 10
+        gunzip -c test-results/12_linearized_synteny_graph_edges.tsv.gz | awk '/HOG_HOG:0000217_13\tHOG_HOG:0000282_13/'
