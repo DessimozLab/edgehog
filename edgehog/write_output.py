@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import gzip
 import numpy
 import pandas as pd
 import os
 import networkx as nx
 import pyham
-import tables
 
 
 def label_nodes(graph):
@@ -60,13 +58,13 @@ def graph_to_df(graph, genome, edge_datation, orient_edges, label_dict=None, ann
                 if isinstance(genome, pyham.AncestralGenome):
                     edge_dict['gene1'].append(label_dict[u])
                     edge_dict['gene2'].append(label_dict[v])
-                    
+
                     if orient_edges:
-                        # in case of equalities, here is the hierarchy: unidirectional > divergent > convergent 
-                        e_u, e_d, e_c = edge_data['unidirectional'], edge_data['divergent'], edge_data['convergent'] 
+                        # in case of equalities, here is the hierarchy: unidirectional > divergent > convergent
+                        e_u, e_d, e_c = edge_data['unidirectional'], edge_data['divergent'], edge_data['convergent']
                         edge_dict['predicted_transcriptional_orientation'].append(['unidirectional','divergent','convergent',][numpy.argmax([e_u, e_d, e_c])])
                         edge_dict['orientation_score'].append(round(max(e_u,e_c,e_d)))
-                        
+
                     if include_extant_genes:
                         edge_dict['gene1_extant_annotations'].append(annotation_dict[u])
                         edge_dict['gene2_extant_annotations'].append(annotation_dict[v])
@@ -82,7 +80,7 @@ def graph_to_df(graph, genome, edge_datation, orient_edges, label_dict=None, ann
                     edge_dict['gene1'].append(u.prot_id)
                     edge_dict['gene2'].append(v.prot_id)
                     if orient_edges:
-                        e_u, e_d, e_c = edge_data['unidirectional'], edge_data['divergent'], edge_data['convergent'] 
+                        e_u, e_d, e_c = edge_data['unidirectional'], edge_data['divergent'], edge_data['convergent']
                         edge_dict['predicted_transcriptional_orientation'].append(['unidirectional','divergent','convergent',][numpy.argmax([e_u, e_d, e_c])])
                         edge_dict['orientation_score'].append(round(max(e_u,e_d,e_c)))
                     if include_extant_genes:
@@ -120,72 +118,9 @@ def graph_to_df(graph, genome, edge_datation, orient_edges, label_dict=None, ann
     return df[column_names]
 
 
-class HDF5Writer:
-    def __init__(self, fname, oma_db_fn):
-        self.fname = fname
-        self.oma_db = oma_db_fn
-
-    def __enter__(self):
-        self.oma_h5 = tables.open_file(self.oma_db, 'r')
-        self.h5 = tables.open_file(self.fname, 'w', filters=tables.Filters(complevel=6, complib="blosc"))
-        self.tax2taxid = self._load_taxname_2_taxid()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.h5.close()
-        self.oma_h5.close()
-
-    def _load_taxname_2_taxid(self):
-        tab = self.oma_h5.get_node("/Taxonomy")
-        return {row['Name'].decode(): int(row['NCBITaxonId']) for row in tab.read()}
-
-    def _load_hog_at_level(self, taxid):
-        try:
-            tab = self.oma_h5.get_node('/AncestralGenomes/tax{}/Hogs'.format(taxid))
-        except tables.NoSuchNodeError:
-            tab = self.oma_h5.get_node('/Hogs_per_Level/tax{}'.format(taxid))
-        return {row['ID'].decode(): row_nr for row_nr, row in enumerate(tab.read())}
-
-    def add_graph_at_level(self, taxid, tree_node, edge_date=False):
-        hogid_lookup = self._load_hog_at_level(taxid)
-        dfs, evidence_enum = [], {"linear": 1, "parsimonious": 2, "any": 4}
-        for evidence, graph in zip(
-                ("linear", "parsimonious", "any"),
-                (tree_node.linear_synteny, tree_node.top_down_synteny, tree_node.bottom_up_synteny)):
-            data, ev = [], evidence_enum[evidence]
-
-            for u, v, w in graph.edges.data("weight", default=1):
-                rec = (hogid_lookup[u.hog_id], hogid_lookup[v.hog_id], w, ev)
-                if edge_date:
-                    rec += (self.tax2taxid.get(graph[u][v]["lca"],-2),) if evidence != "any" else (-2,)
-                data.append(rec)
-            dtype = [("Hog1_idx", "i4"), ("Hog2_idx", "i4"), ("Weight", "i4"), ("Evidence", "i4")]
-            if edge_date:
-                dtype.append(("LCA_taxid", "i4"))
-            df = pd.DataFrame.from_records(numpy.array(data, dtype))
-            dfs.append(df)
-        df = pd.concat(dfs, ignore_index=True)
-        df.drop_duplicates(("Hog1_idx", "Hog2_idx"), keep="first", inplace=True)
-        as_array = df.to_records(index=False)
-        tab = self.h5.create_table("/AncestralGenomes/tax{}".format(taxid),
-                                   "Synteny",
-                                   obj=as_array,
-                                   expectedrows=len(as_array),
-                                   createparents=True)
-        for col in ("Hog1_idx", "Hog2_idx", "Weight", "Evidence"):
-            tab.colinstances[col].create_csindex()
-
-    def get_taxid_from_hog_names(self, graph):
-        taxids = set([])
-        for u in graph.nodes:
-            taxids.add(u.hog_id.rsplit('_')[1])
-        if len(taxids) != 1:
-            raise Exception("multiple taxids on this level: {}".format(taxids))
-        return taxids.pop()
-
-
 def write_as_hdf5(args, ham, out_dir):
-    with HDF5Writer(os.path.join(out_dir, "Synteny.h5"), args.hdf5) as writer:
+    from .hdf5 import HDF5Writer
+    with HDF5Writer(os.path.join(out_dir, "Synteny.h5"), args.hdf5, date_edges=args.date_edges, orient_edges=args.orient_edges) as writer:
         for tree_node in ham.taxonomy.tree.traverse("preorder"):
             try:
                 genome = tree_node.genome
@@ -194,7 +129,7 @@ def write_as_hdf5(args, ham, out_dir):
                 continue
             if isinstance(genome, pyham.AncestralGenome):
                 taxid = writer.get_taxid_from_hog_names(tree_node.linear_synteny)
-                writer.add_graph_at_level(taxid, tree_node, args.date_edges)
+                writer.add_graph_at_level(taxid, tree_node)
 
 
 def write_output(args, ham, out_dir):
@@ -269,5 +204,4 @@ def write_output(args, ham, out_dir):
 
     if args.phylostratify:
         genome_df[['genome_id', 'nb_descendant_leaves', 'level_from_root', 'RED_score', 'name'] + stratigraphy_columns].to_csv(os.path.join(out_dir, 'phylostratigraphy.tsv'), index = False, header = True, sep = '\t')
-
 

@@ -160,50 +160,7 @@ def init_extant_graphs(cpu, ham, hogs_file, gff_directory, hogxml_entries, prote
 
 
 def init_extant_graphs_from_hdf5(ham, hdf5_file, orient_edges):
-    print('###################################')
-    print('Initializing synteny graphs of extant genomes ...')
-    from pyoma.browser import db
-    from pyoma.browser.models import Genome
-    h5 = db.Database(hdf5_file)
-    ext_genomes = [Genome(h5, g) for g in h5.get_hdf5_handle().root.Genome.read()]
-    for genome in ext_genomes:
-        proteins = h5.main_isoforms(genome.uniprot_species_code)
-        proteins.sort(order=['Chromosome', 'LocusStart'])
-        graph = nx.Graph()
-        contiguity_dict = dict()
-        old_gene = ham.get_gene_by_id(proteins[0]['EntryNr'])
-        old_gene_strand = proteins[0]['LocusStrand']
-        old_contig = proteins[0]['Chromosome']
-        graph.add_node(old_gene, contig = old_contig)
-        for i in range(1, len(proteins)):
-            gene = ham.get_gene_by_id(proteins[i]['EntryNr'])
-            contig = proteins[i]['Chromosome']
-            graph.add_node(gene, contig = contig)
-            if contig == old_contig:
-                graph.add_edge(gene, old_gene, weight=1, unidirectional=0, convergent=0, divergent=0, children = [None], extant_descendants = [None])
-                if orient_edges:
-                    old_gene_strand = proteins[i-1]['LocusStrand']
-                    gene_strand = proteins[i]['LocusStrand']
-                    try:
-                        if old_gene_strand == gene_strand:
-                            graph[old_gene][gene]['unidirectional'] = 1
-                        elif old_gene_strand == 1:
-                            graph[old_gene][gene]['convergent'] = 1
-                        elif old_gene_strand == -1:
-                            graph[old_gene][gene]['divergent'] = 1
-                    except:
-                        pass
-            old_gene, old_contig = gene, contig
-        # for cc in nx.connected_components(graph):
-        #     if len(cc > 1):
-        #         for i in range(0, len(cc)):
-        #             for j in range(i+1, len(cc)): 
-        #                 node_a, node_b = cc[i], cc[j]
-        #                 contiguity_dict[(node_a, node_b)] = contiguity_dict[(node_b, node_a)] = 1
-        gene.genome.taxon.add_feature('bottom_up_synteny', graph)
-        gene.genome.taxon.add_feature('contiguity_dict', contiguity_dict)
-    h5.close()
-    return ham
-
+    from .hdf5 import init_extant_graphs_from_hdf5 as extant_graphs_from_hdf5
+    return extant_graphs_from_hdf5(ham, hdf5_file, orient_edges)
 
 

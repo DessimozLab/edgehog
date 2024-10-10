@@ -33,9 +33,14 @@ jobs:
                 --species_tree test_data/species_tree.nwk \
                 --gff_directory test_data/gff3/ \
                 --date_edges \
+                --orient_edges \
                 --output_directory test-results
 
     - name: check produced results
       run: |
         ls test-results
         gunzip -c test-results/12_linearized_synteny_graph_edges.tsv.gz | head -n 10
+    
+    - name: check a specific relation exists
+      run: |
+        gunzip -c test-results/12_linearized_synteny_graph_edges.tsv.gz | awk '/(HOG_HOG:0000285_13\tHOG_HOG:0000284_13)|(HOG_HOG:0000284_13\tHOG_HOG:0000285_13)/{count++; print $0} END {exit (count == 1 ? 0 : 1)}'
