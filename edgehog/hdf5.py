@@ -8,6 +8,7 @@ try:
     from pyoma.browser.tablefmt import AncestralSyntenyRels
     from pyoma.browser import db
     from pyoma.browser.models import Genome
+    from pyoma import version as pyoma_version
 except ImportError:
     print(f"pyoma and pytables libraries are required to work on HDF5 files. "
           f"Please install edgehog with the `oma` extras added, i.e. `pip install edgehog[oma]`.")
@@ -43,16 +44,14 @@ class HDF5Writer:
         return {row['ID'].decode(): row_nr for row_nr, row in enumerate(tab.read())}
 
     def add_graph_at_level(self, taxid, tree_node):
-        try:
-            from pyoma.browser.tablefmt import AncestralSyntenyRels
-        except ImportError:
-            print(f"pyoma library is required to write output as HDF5 files. "
-                  f"Please install edgehog with the `oma` extra activated, i.e. `pip install edgehog[oma]`.")
-            import sys
-            sys.exit(2)
         hogid_lookup = self._load_hog_at_level(taxid)
         dtype = tables.dtype_from_descr(AncestralSyntenyRels)
-        orient_enum = AncestralSyntenyRels.columns['Orientation'].enum
+        if self.orient_edges:
+            try:
+                orient_enum = AncestralSyntenyRels.columns['Orientation'].enum
+            except KeyError:
+                print(f"[WARNING] The installed pyoma library ({pyoma_version()}) does not allow to store the Orientation results. Please update pyoma if needed")
+                self.orient_edges = False
         dfs = []
         for evidence, graph in zip(
                 ("linearized", "parsimonious", "any"),
@@ -62,7 +61,7 @@ class HDF5Writer:
             print(f"process level {taxid} - graph {evidence} - |N|,|V| = {len(graph.nodes)},{len(graph.edges)}")
 
             for u, v, edge_data in graph.edges.data():
-                w = edge_data.get("weight", default=1)
+                w = edge_data["weight"]
                 h1 = u.hog_id.rsplit('_')[0]
                 h2 = v.hog_id.rsplit('_')[0]
                 lca, orient, orient_score = -1, -1, 0

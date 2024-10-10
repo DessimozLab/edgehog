@@ -31,7 +31,6 @@ def main():
     arg_parser.add_argument('--max_gaps', type=int, help='max_gaps can be seen as the theoritical maximal number of consecutive novel genes that can emerge between two older genes (default = 3), '
                             'e.g.  if max_gaps = 2: the probabilistic A-b-c-D-E-f-g-h-I-J graph will be turn into A-D-E ; I-J in the ancestor'
                             'while if max_gaps = 3: the probabilistic A-b-c-D-E-f-g-h-I-J graph will be turn into A-D-E-I-J   in the ancestor', default=3)
-    # arg_parser.add_argument('--cpu', type=str, default='1', help='number of CPUs to use (default is 1)')
     arg_parser.add_argument('--include_extant_genes', action='store_true', help='include extant genes in output file for ancestral reconstructions.')
     arg_parser.add_argument("--out-format", choices=("TSV", "HDF5"), default="TSV",
                             help="define output format. Can be TSV (tab seperated files) or HDF5 (compatible for integration into oma hdf5)")
