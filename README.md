@@ -69,16 +69,12 @@ poetry install --extra oma
 
 ## Usage
 
-> [!CAUTION]
-> This branch `oma` contains adaptions to integrate the results directly into a OmaServer.h5 file.
-> You most likely should switch to the main branch.
-
 ```
 usage: edgehog [-h] [--version] [--output_directory OUTPUT_DIRECTORY] 
                --species_tree SPECIES_TREE  --hogs HOGS 
-               [--gff_directory GFF_DIRECTORY] [--hdf5 HDF5]  [--date_edges] 
-               [--phylostratify] [--max_gaps MAX_GAPS] [--include_extant_genes] 
-               [--out-format {TSV,HDF5}]
+               [--gff_directory GFF_DIRECTORY] [--hdf5 HDF5] [--orient_edges] 
+               [--date_edges] [--phylostratify] [--max_gaps MAX_GAPS] 
+               [--include_extant_genes] [--out-format {TSV,HDF5}]
 
 edgehog is a software tool that infers an ancestral synteny graph at each
 internal node of an input species phylogenetic tree
@@ -92,16 +88,24 @@ optional arguments:
                         path to species/genomes phylogenetic tree (newick format)
   --hogs HOGS           path to the HierarchicalGroups.orthoxml file in which HOGs are stored
   --gff_directory GFF_DIRECTORY
-                        path to directory with the gffs of extant genomes (each gff file must be named according to the name of an extant genome / leaf on the species tree)
-  --hdf5 HDF5           path to the hdf5 file (alternative to gff_directory to run edgeHOG on the entire OMA database)
+                        path to directory with the gffs of extant genomes (each gff file must be named according 
+                        to the name of an extant genome / leaf on the species tree)
+  --hdf5 HDF5           path to the hdf5 file (alternative to gff_directory to run edgeHOG on the entire OMA 
+                        database)
+  --orient_edges        whether the transcriptional orientation of edges should be predicted
   --date_edges          whether the age of edges in extant species should be predicted
-  --phylostratify       whether the number of edge retention, gain and loss should be analyzed for each node of the species tree
-  --max_gaps MAX_GAPS   max_gaps can be seen as the theoritical maximal number of consecutive novel genes that can emerge between two older genes (default = 3), e.g. if max_gaps = 2: the probabilistic A-b-c-D-E-f-g-h-I-J graph will be turn into A-D-E ; I-J in the ancestorwhile if max_gaps = 3: the probabilistic A-b-c-D-E-f-g-h-I-J graph will be
+  --phylostratify       whether the number of edge retention, gain and loss should be analyzed for each node
+                        of the species tree
+  --max_gaps MAX_GAPS   max_gaps can be seen as the theoritical maximal number of consecutive novel genes that
+                        can emerge between two older genes (default = 3), e.g. if max_gaps = 2: the
+                        probabilistic A-b-c-D-E-f-g-h-I-J graph will be turn into A-D-E ; I-J in the
+                        ancestorwhile if max_gaps = 3: the probabilistic A-b-c-D-E-f-g-h-I-J graph will be
                         turn into A-D-E-I-J in the ancestor
   --include_extant_genes
                         include extant genes in output file for ancestral reconstructions.
   --out-format {TSV,HDF5}
-                        define output format. Can be TSV (tab seperated files) or HDF5 (compatible for integration into oma hdf5)
+                        define output format. Can be TSV (tab seperated files) or HDF5 (compatible for 
+                        integration into oma hdf5)
 ```
 
 ## Input data
