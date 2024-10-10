@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "edgehog"
-version = "0.1.5"
+version = "0.1.6"
 description = "Infering ancestral synteny with hierarchical orthologous groups"
 authors = ["Charles Bernard <charles.bernard@unil.ch>",
            "Adrian Altenhoff <adrian.altenhoff@inf.ethz.ch>"]
