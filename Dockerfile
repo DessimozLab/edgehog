@@ -11,9 +11,8 @@ RUN python -m venv /venv
 
 WORKDIR /app
 
-COPY pyproject.toml poetry.lock README.md ./
-
-RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --without dev --no-root
+COPY pyproject.toml README.md ./
+RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry lock && poetry install --without dev --no-root
 
 
 FROM python:3.11-slim AS runtime
@@ -22,7 +21,7 @@ WORKDIR /app
 ENV VIRTUAL_ENV=/app/.venv \
     PATH="/app/.venv/bin:$PATH"
 
-COPY pyproject.toml poetry.lock README.md ./
+COPY pyproject.toml README.md ./
 COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 COPY edgehog ./edgehog
 RUN pip install poetry && poetry install --without dev && pip uninstall -y poetry
