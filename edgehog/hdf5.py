@@ -5,7 +5,7 @@ import networkx as nx
 
 try:
     import tables
-    from pyoma.browser.tablefmt import AncestralSyntenyRels
+    from pyoma.browser.tablefmt import AncestralSyntenyRels, ExtantSyntenyRels
     from pyoma.browser import db
     from pyoma.browser.models import Genome
     from pyoma import version as pyoma_version
@@ -26,6 +26,7 @@ class HDF5Writer:
         self.oma_h5 = tables.open_file(self.oma_db, 'r')
         self.h5 = tables.open_file(self.fname, 'w', filters=tables.Filters(complevel=6, complib="blosc"))
         self.tax2taxid = self._load_taxname_2_taxid()
+        self.genome_lookup = self._load_genome_tab()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -35,6 +36,10 @@ class HDF5Writer:
     def _load_taxname_2_taxid(self):
         tab = self.oma_h5.get_node("/Taxonomy")
         return {row['Name'].decode(): int(row['NCBITaxonId']) for row in tab.read()}
+
+    def _load_genome_tab(self):
+        tab = self.oma_h5.get_node("/Genome")
+        return {int(row['NCBITaxonId']): row for row in tab.read()}
 
     def _load_hog_at_level(self, taxid):
         try:
@@ -104,6 +109,78 @@ class HDF5Writer:
             tab.colinstances[col].create_csindex()
         print(f" hdf5 level {taxid} written: {len(tab)} rows.")
 
+    def add_extant_graph(self, taxid, tree_node):
+        if ExtantSyntenyRels is None:
+            print(f"[WARNING] The installed pyoma library ({pyoma_version}) does not allow to store extant synteny results. Please update pyoma if needed")
+            return
+
+        dtype = tables.dtype_from_descr(ExtantSyntenyRels)
+        if self.orient_edges:
+            orient_enum = ExtantSyntenyRels.columns['Orientation'].enum
+
+        gs = self.genome_lookup[taxid]
+        os_code = gs['UniProtSpeciesCode'].decode()
+        try:
+            os = tree_node.genome_code
+            if os != os_code:
+                print(f"[WARNING] non-matching species codes: {os} vs {os_code}")
+                return
+        except AttributeError:
+            pass
+
+        # graph is input synteny graph stored in bottom_up_synteny
+        graph = tree_node.bottom_up_synteny
+        ev = ExtantSyntenyRels.columns['Evidence'].enum["linearized"]
+        orient_enum = ExtantSyntenyRels.columns['Orientation'].enum
+
+        print(f"process species {taxid} - graph |N|,|V| = {len(graph.nodes)},{len(graph.edges)}")
+        data = []
+        for u, v, edge_data in graph.edges.data():
+            w = edge_data["weight"]
+            if u.startswith(os_code):
+                enr1 = int(u[len(os_code):]) + int(gs['EntryOff'])
+                enr2 = int(v[len(os_code):]) + int(gs['EntryOff'])
+            else:
+                print(f"[WARNING] cannot parse protein ids: {u} / {v}")
+                continue
+            lca, orient, orient_score = -1, -1, 0
+            if self.date_edges:
+                try:
+                    lca_clade = edge_data['lca']
+                    lca = self.tax2taxid[lca_clade]
+                except KeyError:
+                    pass
+            if self.orient_edges:
+                keys = ['unidirectional', 'divergent', 'convergent']
+                try:
+                    orient_weights = numpy.array(list(map(lambda o: edge_data[o], keys)))
+                except KeyError:
+                    pass
+                else:
+                    orient = orient_enum[keys[numpy.argmax(orient_weights)]]
+                    orient_score = orient_weights.max()
+            rec = (enr1, enr2, w, ev, lca, orient, orient_score)
+            data.append(rec)
+        df = pd.DataFrame.from_records(numpy.array(data, dtype=dtype))
+        sumdf = df.groupby(by=["EntryNr1", "EntryNr2"], as_index=False).agg({
+            "Weight": "max",
+            "Evidence": "min",
+            # -1 indicates 'n/a', all other values should be consistent.
+            "LCA_taxid": lambda x: x[x != -1].max() if not x[x != -1].empty else -1,
+            "Orientation": lambda x: x[x != -1].max() if not x[x != -1].empty else -1,
+            "OrientationScore": "max",
+        })
+        as_array = sumdf.to_records(index=False, column_dtypes={"LCA_taxid": numpy.int32})
+
+        tab = self.h5.create_table("/ExtantGenomes/{}".format(os_code),
+                                   "Synteny", description=ExtantSyntenyRels,
+                                   obj=as_array,
+                                   expectedrows=len(as_array),
+                                   createparents=True)
+        for col in ("EntryNr1", "EntryNr2", "Weight", "Evidence", "LCA_taxid",):
+            tab.colinstances[col].create_csindex()
+        print(f" hdf5 extend {os_code} written: {len(tab)} rows.")
+
     def get_taxid_from_hog_names(self, graph):
         taxids = set([])
         for u in graph.nodes:
@@ -154,5 +231,6 @@ def init_extant_graphs_from_hdf5(ham, hdf5_file, orient_edges):
             old_gene, old_contig = gene, contig
         gene.genome.taxon.add_feature('bottom_up_synteny', graph)
         gene.genome.taxon.add_feature('contiguity_dict', contiguity_dict)
+        gene.genome.taxon.add_feature('genome_code', genome.uniprot_species_code)
     h5.close()
     return ham

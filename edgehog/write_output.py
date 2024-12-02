@@ -130,6 +130,8 @@ def write_as_hdf5(args, ham, out_dir):
             if isinstance(genome, pyham.AncestralGenome):
                 taxid = writer.get_taxid_from_hog_names(tree_node.linear_synteny)
                 writer.add_graph_at_level(taxid, tree_node)
+            elif isinstance(genome, pyham.ExtantGenome):
+                writer.add_extant_graph(genome.taxid, tree_node)
 
 
 def write_output(args, ham, out_dir):
