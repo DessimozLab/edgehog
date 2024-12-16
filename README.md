@@ -239,3 +239,25 @@ rootHOG_7087    HOG_172341      2.0     3.0     0.0     Micromonas;Ostreococcus 
 ...
 ```
 
+## Dating extant adjacencies with TimeTree data
+
+The ```--date_edges``` option in EdgeHOG predicts the most ancient clade for which the adjacency already existed in the Last Common Ancestor. For some analyses (including one described in our original manuscript), it may be beneficial instead to date adjacencies in term of years.
+This is not trivial and necessarily not precise, since it implies attributing an age to the LCA of a clade in question. Nevertheless, we offer users the opportunity to do this, using ages inferred from the TimeTree website (http://www.timetree.org/).
+
+To do this, you would first need to input your list of species to the TimeTree website, and obtain a species tree where the branch length corresponds to an inferred time of evolution (using molecular and fossil data).
+After you obtain this tree, please curate it to make sure all the species name are consistent between your original species tree and the obtained species tree.
+
+After this have been done, you can use the ```extract_age_timetree.py``` script, available in this repository. This will update your EdgeHOG output for extant species with the estimated age of adjacencies in Million years.
+
+
+```extract_age_timetree.py -s edgehog_species_tree.nwk -t timetree_species_tree.nwk -i input_edgehog_folder/ -o output_folder/```
+
+With:
+- ```-s``` ```--species_tree``` The original species tree used when running EdgeHOG.
+- ```-t``` ```--timetree```A timetree, with the leaves using the same namespace as the original tree (but potentially including only part of the leafset) .
+- ```-i``` ```--input_folder``` The input folder, resulting from a EdgeHOG run, where the target files are located. 
+- ```-o``` ```--output_folder``` The output folder where to write the edited files. The folder must have been created previously.
+
+After running the script, the output folder should contain an updated version of the extant adjacency files with an added column: age_MiY. This column contains a floating number, corresponding to the predicted age of the adjacency in million years. It is reported for all the extant adjacencies in the file.
+
+If you are using TimeTree data in the context of EdgeHOG, please comply with the How to cite section in the TimeTree webiste (http://www.timetree.org/faqs)
