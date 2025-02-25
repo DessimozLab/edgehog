@@ -83,22 +83,30 @@ def get_representative_hog_for_gene(ham, hogxml_entries):
 
 # Create a feature "synteny" that stores a synteny graph for the current extant genome
 def assign_extant_synteny(genome, gene_dict, ham, orient_edges): 
-    graph = nx.Graph(genome = genome)
+    graph = nx.Graph(genome=genome)
     contiguity_dict = dict()
     gene_keys = list(gene_dict.keys())
-    old_contig = gene_keys[0][0]
-    hogxml_entries = gene_dict[gene_keys[0]]['hogxml_entries']
+
+    # find first gene with hogxml_entries, i.e. that is reported in orthoxml
+    for first, gene_key in enumerate(gene_keys):
+        if 'hogxml_entries' in gene_dict[gene_key]:
+            break
+    else:
+        raise ValueError('No gene with hogxml_entries found in genome %s' % genome.name)
+
+    old_contig = gene_keys[first][0]
+    hogxml_entries = gene_dict[gene_keys[first]]['hogxml_entries']
     old_gene = get_representative_hog_for_gene(ham, hogxml_entries)
-    graph.add_node(old_gene, **gene_dict[gene_keys[0]], contig = old_contig)
-    for i in range(1, len(gene_keys)):
+    graph.add_node(old_gene, **gene_dict[gene_keys[first]], contig=old_contig)
+    for i in range(first+1, len(gene_keys)):
         contig = gene_keys[i][0]
         if 'hogxml_entries' in gene_dict[gene_keys[i]]:
             hogs_entries = gene_dict[gene_keys[i]]['hogxml_entries']
             gene = get_representative_hog_for_gene(ham, hogs_entries)
-            graph.add_node(gene, **gene_dict[gene_keys[i]], contig = contig)
+            graph.add_node(gene, **gene_dict[gene_keys[i]], contig=contig)
             if contig == old_contig:
                 # connect genes only if they are on the same contig
-                graph.add_edge(old_gene, gene, weight=1, unidirectional=0, convergent=0, divergent=0, children = [None], extant_descendants = [None])
+                graph.add_edge(old_gene, gene, weight=1, unidirectional=0, convergent=0, divergent=0, children=[None], extant_descendants=[None])
                 if orient_edges:
                     old_gene_strand = gene_dict[gene_keys[i-1]]['strand']
                     gene_strand = gene_dict[gene_keys[i]]['strand']
