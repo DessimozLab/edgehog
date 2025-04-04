@@ -13,7 +13,7 @@
 
 ## Overview
 
-```edgeHOG``` is a tool to infer the gene order of each ancestor in a species phylogeny. As such, ```edgeHOG``` enables both to explore ancestral microsyntenies (local scale) and to reconstruct ancestral chromosomes (global scale). 
+```edgeHOG``` is a tool to infer the gene order of each ancestor in a species phylogeny. As such, ```edgeHOG``` enables both to explore ancestral microsyntenies (local scale) and to reconstruct ancestral contigs of genes (global scale). 
 
 ```edgeHOG``` relies on objects called HOGs (Hierarchical Groups of Orthologs) to model gene lineages and ancestral gene content. Basically, genes that belong to the same HOG across extant genomes are inferred to have descended from the same common ancestral gene in the common ancestor of these genomes. Accordingly, adjacencies between extant genes can be converted to edges between HOGs, which enables parsimonious ancestral gene order inferences.  
 
@@ -22,7 +22,7 @@
 
 ### Hardware Requirements
 
-The `edgeHOG` package requires only a standard computer with enough RAM. The amount of RAM depends a lot on the size of the dataset. For big datasets (thousands of genomes), more than 100GB of RAM are needed.
+The `edgeHOG` package requires only a standard computer with enough RAM. The amount of RAM depends a lot on the size of the dataset. For eukaryotic genomes, you can estimate the amount of GB of RAM needed using the formuling formula ```RAM (in GB) = 0.15 * nb_input_genomes```. For big datasets (thousands of genomes), more than 100GB of RAM are needed.
 
 ### Software Requirements
 
@@ -32,11 +32,11 @@ The package development version is tested on *Linux* operating systems. The deve
 
 The package itself should be compatible with Windows, Mac and Linux operating systems.
 
-Edgehog is written in purge Python, so a working python installation is needed before installing edgehog.
+Edgehog is written in Python, so a working python installation is needed before installing edgehog. The version of python version must be >=3.9 and <3.13
 
 #### Installing Python on Ubuntu 22.04
 
-Python can be installed directly from its `apt` system using `apt install python3`
+Python can be installed directly from its `apt` system using `apt install python3.12`
 
 ## Installation
 
@@ -64,7 +64,25 @@ pip install poetry  # poetry is used as build and dependency resolving system.
 
 git clone https://github.com/dessimozlab/edgehog.git
 cd edgehog
-poetry install --extra oma
+poetry install --extras=oma
+```
+
+### For conda users
+
+To install edgehog within a conda environment, please follow the instructions below.
+
+```bash
+conda create -n edgehog python=3.12
+conda activate edgehog
+
+# And either
+pip install edgehog
+
+# Or
+pip install poetry
+git clone https://github.com/dessimozlab/edgehog.git
+cd edgehog
+poetry install --extras=oma
 ```
 
 ## Usage
@@ -93,7 +111,7 @@ optional arguments:
   --hdf5 HDF5           path to the hdf5 file (alternative to gff_directory to run edgeHOG on the entire OMA 
                         database)
   --orient_edges        whether the transcriptional orientation of edges should be predicted
-  --date_edges          whether the age of edges in extant species should be predicted
+  --date_edges          whether the age of edges should be predicted
   --phylostratify       whether the number of edge retention, gain and loss should be analyzed for each node
                         of the species tree
   --max_gaps MAX_GAPS   max_gaps can be seen as the theoritical maximal number of consecutive novel genes that
@@ -102,7 +120,8 @@ optional arguments:
                         ancestorwhile if max_gaps = 3: the probabilistic A-b-c-D-E-f-g-h-I-J graph will be
                         turn into A-D-E-I-J in the ancestor
   --include_extant_genes
-                        include extant genes in output file for ancestral reconstructions.
+                        whether to use a concatenation of all descending extant genes to describe an ancestral gene 
+                        in the output files
   --out-format {TSV,HDF5}
                         define output format. Can be TSV (tab seperated files) or HDF5 (compatible for 
                         integration into oma hdf5)
@@ -247,7 +266,7 @@ This is not trivial and necessarily not precise, since it implies attributing an
 To do this, you would first need to input your list of species to the TimeTree website, and obtain a species tree where the branch length corresponds to an inferred time of evolution (using molecular and fossil data).
 After you obtain this tree, please curate it to make sure all the species name are consistent between your original species tree and the obtained species tree.
 
-After this have been done, you can use the ```extract_age_timetree.py``` script, available in this repository. This will update your EdgeHOG output for extant species with the estimated age of adjacencies in Million years.
+After this has been done, you can use the ```extract_age_timetree.py``` script, available in this repository. This will update your EdgeHOG output for extant species with the estimated age of adjacencies in Million years.
 
 
 ```extract_age_timetree.py -s edgehog_species_tree.nwk -t timetree_species_tree.nwk -i input_edgehog_folder/ -o output_folder/```
@@ -260,4 +279,4 @@ With:
 
 After running the script, the output folder should contain an updated version of the extant adjacency files with an added column: age_MiY. This column contains a floating number, corresponding to the predicted age of the adjacency in million years. It is reported for all the extant adjacencies in the file.
 
-If you are using TimeTree data in the context of EdgeHOG, please comply with the How to cite section in the TimeTree webiste (http://www.timetree.org/faqs)
+If you are using TimeTree data in the context of EdgeHOG, please comply with the How to cite section in the TimeTree website (http://www.timetree.org/faqs)
