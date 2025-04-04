@@ -26,12 +26,12 @@ def main():
                             '(each gff file must be named according to the name of an extant genome / leaf on the species tree)')
     arg_parser.add_argument('--hdf5', type=str, help='path to the hdf5 file (alternative to gff_directory to run edgeHOG on the entire OMA database)')
     arg_parser.add_argument('--orient_edges', action='store_true', help='whether the transcriptional orientation of edges should be predicted')    
-    arg_parser.add_argument('--date_edges', action='store_true', help='whether the age of edges in extant species should be predicted')
+    arg_parser.add_argument('--date_edges', action='store_true', help='whether the age of edges should be predicted')
     arg_parser.add_argument('--phylostratify', action='store_true', help='whether the number of edge retention, gain and loss should be analyzed for each node of the species tree')
     arg_parser.add_argument('--max_gaps', type=int, help='max_gaps can be seen as the theoritical maximal number of consecutive novel genes that can emerge between two older genes (default = 3), '
                             'e.g.  if max_gaps = 2: the probabilistic A-b-c-D-E-f-g-h-I-J graph will be turn into A-D-E ; I-J in the ancestor'
                             'while if max_gaps = 3: the probabilistic A-b-c-D-E-f-g-h-I-J graph will be turn into A-D-E-I-J   in the ancestor', default=3)
-    arg_parser.add_argument('--include_extant_genes', action='store_true', help='include extant genes in output file for ancestral reconstructions.')
+    arg_parser.add_argument('--include_extant_genes', action='store_true', help='whether to use a concatenation of all descending extant genes to describe an ancestral gene in the output files')
     arg_parser.add_argument("--out-format", choices=("TSV", "HDF5"), default="TSV",
                             help="define output format. Can be TSV (tab seperated files) or HDF5 (compatible for integration into oma hdf5)")
     args = arg_parser.parse_args()
