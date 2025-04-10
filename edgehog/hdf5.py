@@ -9,9 +9,10 @@ try:
     from pyoma.browser import db
     from pyoma.browser.models import Genome
     from pyoma import version as pyoma_version
-except ImportError:
+except ImportError as e:
     print(f"pyoma and pytables libraries are required to work on HDF5 files. "
           f"Please install edgehog with the `oma` extras added, i.e. `pip install edgehog[oma]`.")
+    print(e)
     sys.exit(2)
 
 
