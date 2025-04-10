@@ -128,7 +128,11 @@ def write_as_hdf5(args, ham, out_dir):
                 print('No genome stored for {}'.format(tree_node.name))
                 continue
             if isinstance(genome, pyham.AncestralGenome):
-                taxid = writer.get_taxid_from_hog_names(tree_node.linear_synteny)
+                try:
+                    taxid = writer.get_taxid_from_hog_names(tree_node.linear_synteny)
+                except Exception as e:
+                    print("Error to retrieve taxid for {}: {}".format(tree_node.name, e))
+                    raise
                 writer.add_graph_at_level(taxid, tree_node)
             elif isinstance(genome, pyham.ExtantGenome):
                 writer.add_extant_graph(genome.taxid, tree_node)
