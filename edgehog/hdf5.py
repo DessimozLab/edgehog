@@ -99,7 +99,7 @@ class HDF5Writer:
             "OrientationScore": "max",
 
         })
-        as_array = sumdf.to_records(index=False, column_dtypes={"LCA_taxid": numpy.int32})
+        as_array = sumdf.astype({col: dtype.fields[col][0] for col in dtype.names}).to_records(index=False)
         tab = self.h5.create_table("/AncestralGenomes/tax{}".format(taxid),
                                    "Synteny", description=AncestralSyntenyRels,
                                    obj=as_array,
@@ -170,7 +170,7 @@ class HDF5Writer:
             "Orientation": lambda x: x[x != -1].max() if not x[x != -1].empty else -1,
             "OrientationScore": "max",
         })
-        as_array = sumdf.to_records(index=False, column_dtypes={"LCA_taxid": numpy.int32})
+        as_array = sumdf.astype({col: dtype.fields[col][0] for col in dtype.names}).to_records(index=False)
 
         tab = self.h5.create_table("/ExtantGenomes/{}".format(os_code),
                                    "Synteny", description=ExtantSyntenyRels,
