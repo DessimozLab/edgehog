@@ -135,7 +135,11 @@ def write_as_hdf5(args, ham, out_dir):
                     raise
                 writer.add_graph_at_level(taxid, tree_node)
             elif isinstance(genome, pyham.ExtantGenome):
-                writer.add_extant_graph(genome.taxid, tree_node)
+                try:
+                    taxid = genome.taxon.taxid
+                except AttributeError:
+                    taxid = int(genome.taxid)
+                writer.add_extant_graph(taxid, tree_node)
 
 
 def write_output(args, ham, out_dir):

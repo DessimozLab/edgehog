@@ -138,9 +138,9 @@ class HDF5Writer:
         data = []
         for u, v, edge_data in graph.edges.data():
             w = edge_data["weight"]
-            if u.startswith(os_code):
-                enr1 = int(u[len(os_code):]) + int(gs['EntryOff'])
-                enr2 = int(v[len(os_code):]) + int(gs['EntryOff'])
+            if u.prot_id.startswith(os_code):
+                enr1 = int(u.prot_id[len(os_code):]) + int(gs['EntryOff'])
+                enr2 = int(v.prot_id[len(os_code):]) + int(gs['EntryOff'])
             else:
                 print(f"[WARNING] cannot parse protein ids: {u} / {v}")
                 continue
@@ -233,5 +233,6 @@ def init_extant_graphs_from_hdf5(ham, hdf5_file, orient_edges):
         gene.genome.taxon.add_feature('bottom_up_synteny', graph)
         gene.genome.taxon.add_feature('contiguity_dict', contiguity_dict)
         gene.genome.taxon.add_feature('genome_code', genome.uniprot_species_code)
+        gene.genome.taxon.add_feature('taxid', genome.ncbi_taxon_id)
     h5.close()
     return ham
