@@ -16,6 +16,11 @@ except ImportError as e:
     sys.exit(2)
 
 
+def fast_max_except_minus1(x):
+    arr = x.values
+    mask = arr != -1
+    return arr[mask].max() if mask.any() else -1
+
 class HDF5Writer:
     def __init__(self, fname, oma_db_fn, date_edges=False, orient_edges=False):
         self.fname = fname
@@ -95,8 +100,8 @@ class HDF5Writer:
             "Weight": "max",
             "Evidence": "min",
             # -1 indicates 'n/a', all other values should be consistent.
-            "LCA_taxid": lambda x: x[x != -1].max() if not x[x != -1].empty else -1,
-            "Orientation": lambda x: x[x != -1].max() if not x[x != -1].empty else -1,
+            "LCA_taxid": fast_max_except_minus1,
+            "Orientation": fast_max_except_minus1,
             "OrientationScore": "max",
 
         })
@@ -167,8 +172,8 @@ class HDF5Writer:
             "Weight": "max",
             "Evidence": "min",
             # -1 indicates 'n/a', all other values should be consistent.
-            "LCA_taxid": lambda x: x[x != -1].max() if not x[x != -1].empty else -1,
-            "Orientation": lambda x: x[x != -1].max() if not x[x != -1].empty else -1,
+            "LCA_taxid": fast_max_except_minus1,
+            "Orientation": fast_max_except_minus1,
             "OrientationScore": "max",
         })
         as_array = sumdf.astype({col: dtype.fields[col][0] for col in dtype.names}).to_records(index=False)

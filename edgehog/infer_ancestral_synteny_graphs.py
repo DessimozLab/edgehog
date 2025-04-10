@@ -138,10 +138,6 @@ def build_transitive_graph(graph, orient_edges, max_gap_length = 2):
                                             children = list(set(graph[left_gene][gene]["children"] + graph[gene][right_gene]["children"])),
                                             extant_descendants = list(set(graph[left_gene][gene]["extant_descendants"] + graph[gene][right_gene]["extant_descendants"])))
                              if orient_edges:
-                                 try:
-                                     print(left_gene.hog_id, right_gene.hog_id)
-                                 except:
-                                     print(left_gene.prot_id, right_gene.prot_id)
                                  wA, uA, cA, dA = graph[left_gene][gene]["weight"], graph[left_gene][gene]["unidirectional"], graph[left_gene][gene]["convergent"], graph[left_gene][gene]["divergent"]
                                  wB, uB, cB, dB = graph[gene][right_gene]["weight"], graph[gene][right_gene]["unidirectional"], graph[gene][right_gene]["convergent"], graph[gene][right_gene]["divergent"]
                                  u, c, d = orient_reconnected_edges(wA, uA, cA, dA, wB, uB, cB, dB)
