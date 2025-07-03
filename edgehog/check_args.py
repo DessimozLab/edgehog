@@ -21,7 +21,7 @@ def check_path_exists(file):
         
 def check_file_extension(file, file_type):
     if file_type == 'orthoxml':
-        if not re.match(r'.*?\.ortho(xml|XML)$', file):
+        if not re.match(r'.*?\.ortho(xml|XML)(\.gz)?$', file):
             sys.exit('error: File \'%s\' has an incorrect extension: \'.orthoxml\', is expected for a HOGs file' % file)
     elif file_type == 'gff':
         if not re.match(r'.*?\.gff(3)?$', file):
