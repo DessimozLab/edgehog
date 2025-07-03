@@ -24,7 +24,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-oma = ["pyoma>=0.13.3,<1"]
+oma = [
+   "pyoma>=0.13.3,<1",
+   "tables (<=3.10.0) ; python_version < '3.11'",
+   "tables (>=3.10) ; python_version >= '3.11'",
+]
 
 [project.scripts]
 edgehog = 'edgehog.edgehog:main'
