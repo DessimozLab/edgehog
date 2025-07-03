@@ -21,6 +21,7 @@ def fast_max_except_minus1(x):
     mask = arr != -1
     return arr[mask].max() if mask.any() else -1
 
+
 class HDF5Writer:
     def __init__(self, fname, oma_db_fn, date_edges=False, orient_edges=False):
         self.fname = fname
@@ -216,14 +217,21 @@ def init_extant_graphs_from_hdf5(ham, hdf5_file, orient_edges):
         old_gene_strand = proteins[0]['LocusStrand']
         old_contig = proteins[0]['Chromosome']
         graph.add_node(old_gene, contig = old_contig)
+        old_i = 0
         for i in range(1, len(proteins)):
-            gene = ham.get_gene_by_id(proteins[i]['EntryNr'])
+            try:
+                # some genes may not be in the orthoxml file, e.g. if they were too short. Let's simply skip them
+                gene = ham.get_gene_by_id(proteins[i]['EntryNr'])
+            except KeyError as e:
+                print(f"[WARNING] Gene with ID {proteins[i]['EntryNr']} {proteins[i]['CanonicalId'].decode()} not found in HAM. Skipping this gene.")
+                continue
+
             contig = proteins[i]['Chromosome']
-            graph.add_node(gene, contig = contig)
+            graph.add_node(gene, contig=contig)
             if contig == old_contig:
-                graph.add_edge(gene, old_gene, weight=1, unidirectional=0, convergent=0, divergent=0, children = [None], extant_descendants = [None])
+                graph.add_edge(gene, old_gene, weight=1, unidirectional=0, convergent=0, divergent=0, children=[None], extant_descendants=[None])
                 if orient_edges:
-                    old_gene_strand = proteins[i-1]['LocusStrand']
+                    old_gene_strand = proteins[old_i]['LocusStrand']
                     gene_strand = proteins[i]['LocusStrand']
                     try:
                         if old_gene_strand == gene_strand:
@@ -234,7 +242,7 @@ def init_extant_graphs_from_hdf5(ham, hdf5_file, orient_edges):
                             graph[old_gene][gene]['divergent'] = 1
                     except:
                         pass
-            old_gene, old_contig = gene, contig
+            old_gene, old_contig, old_i = gene, contig, i
         gene.genome.taxon.add_feature('bottom_up_synteny', graph)
         gene.genome.taxon.add_feature('contiguity_dict', contiguity_dict)
         gene.genome.taxon.add_feature('genome_code', genome.uniprot_species_code)
