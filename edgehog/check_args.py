@@ -6,6 +6,7 @@ import os
 import re
 import sys
 import shutil
+from . import __version__ as edgehog_version
 
 
 def check_out_dir(out_dir):
@@ -35,6 +36,8 @@ def print_args(args, out_dir):
     
 
 def check_args(args):
+    print('###################################')
+    print(f"Running edgehog {edgehog_version}")
     print('###################################')
     print('Checking arguments ...')
     # check cpu is integer
