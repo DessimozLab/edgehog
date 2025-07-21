@@ -213,26 +213,34 @@ def init_extant_graphs_from_hdf5(ham, hdf5_file, orient_edges):
         proteins.sort(order=['Chromosome', 'LocusStart'])
         graph = nx.Graph()
         contiguity_dict = dict()
-        old_gene = ham.get_gene_by_id(proteins[0]['EntryNr'])
-        old_gene_strand = proteins[0]['LocusStrand']
-        old_contig = proteins[0]['Chromosome']
-        graph.add_node(old_gene, contig = old_contig)
-        old_i = 0
-        for i in range(1, len(proteins)):
+        for first_gene_index in range(len(proteins)):
             try:
                 # some genes may not be in the orthoxml file, e.g. if they were too short. Let's simply skip them
-                gene = ham.get_gene_by_id(proteins[i]['EntryNr'])
+                old_gene = ham.get_gene_by_id(proteins[first_gene_index]['EntryNr'])
             except KeyError as e:
-                print(f"[WARNING] Gene with ID {proteins[i]['EntryNr']} {proteins[i]['CanonicalId'].decode()} not found in HAM. Skipping this gene.")
+                print(f"[WARNING] Gene with ID {proteins[first_gene_index]['EntryNr']} {proteins[first_gene_index]['CanonicalId'].decode()} not found in HAM. Skipping this gene.")
                 continue
 
-            contig = proteins[i]['Chromosome']
+            old_contig = proteins[first_gene_index]['Chromosome']
+            graph.add_node(old_gene, contig=old_contig)
+            break
+
+        old_gene_index = first_gene_index
+        for gene_index in range(first_gene_index + 1, len(proteins)):
+            try:
+                # some genes may not be in the orthoxml file, e.g. if they were too short. Let's simply skip them
+                gene = ham.get_gene_by_id(proteins[gene_index]['EntryNr'])
+            except KeyError as e:
+                print(f"[WARNING] Gene with ID {proteins[gene_index]['EntryNr']} {proteins[gene_index]['CanonicalId'].decode()} not found in HAM. Skipping this gene.")
+                continue
+
+            contig = proteins[gene_index]['Chromosome']
             graph.add_node(gene, contig=contig)
             if contig == old_contig:
                 graph.add_edge(gene, old_gene, weight=1, unidirectional=0, convergent=0, divergent=0, children=[None], extant_descendants=[None])
                 if orient_edges:
-                    old_gene_strand = proteins[old_i]['LocusStrand']
-                    gene_strand = proteins[i]['LocusStrand']
+                    old_gene_strand = proteins[old_gene_index]['LocusStrand']
+                    gene_strand = proteins[gene_index]['LocusStrand']
                     try:
                         if old_gene_strand == gene_strand:
                             graph[old_gene][gene]['unidirectional'] = 1
@@ -242,7 +250,7 @@ def init_extant_graphs_from_hdf5(ham, hdf5_file, orient_edges):
                             graph[old_gene][gene]['divergent'] = 1
                     except:
                         pass
-            old_gene, old_contig, old_i = gene, contig, i
+            old_gene, old_contig, old_gene_index = gene, contig, gene_index
         gene.genome.taxon.add_feature('bottom_up_synteny', graph)
         gene.genome.taxon.add_feature('contiguity_dict', contiguity_dict)
         gene.genome.taxon.add_feature('genome_code', genome.uniprot_species_code)
