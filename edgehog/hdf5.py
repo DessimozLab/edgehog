@@ -197,6 +197,19 @@ class HDF5Writer:
                 continue
             taxids.add(taxid)
         if len(taxids) > 1:
+            # this should not happen, let's log it with debugging info and raise an exception
+            print(f"multiple taxids on this level: {taxids}", file=sys.stderr)
+            cnt = collections.Counter(u.hog_id.rsplit('_')[1] for u in graph.nodes)
+            print(cnt.most_common(10), file=sys.stderr)
+            tt = set(taxids)
+            for u in graph.nodes:
+                try:
+                    hogid, taxid = u.hog_id.rsplit('_')
+                except ValueError:
+                    continue
+                if taxid in tt:
+                    print(f"example HOG for taxid {taxid}: {u.hog_id}", file=sys.stderr)
+                    tt.remove(taxid)
             raise Exception("multiple taxids on this level: {}".format(taxids))
         elif len(taxids) == 0:
             return 0
