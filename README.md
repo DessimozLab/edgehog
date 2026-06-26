@@ -280,3 +280,10 @@ With:
 After running the script, the output folder should contain an updated version of the extant adjacency files with an added column: age_MiY. This column contains a floating number, corresponding to the predicted age of the adjacency in million years. It is reported for all the extant adjacencies in the file.
 
 If you are using TimeTree data in the context of EdgeHOG, please comply with the How to cite section in the TimeTree website (http://www.timetree.org/faqs)
+
+## Citation
+
+If you are using EdgeHOG, please cite:
+
+Bernard, C., Nevers, Y., Karampudi, N.B.R. et al. EdgeHOG: a method for fine-grained ancestral gene order inference at large scale. Nat Ecol Evol 9, 1951–1961 (2025). https://doi.org/10.1038/s41559-025-02818-0
+
