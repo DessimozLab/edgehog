@@ -7,8 +7,8 @@ authors = [
    {name="Adrian Altenhoff", email="adrian.altenhoff@inf.ethz.ch"},
 ]
 license = "MIT"
+license-files = ["LICENSE.txt"]
 readme = "README.md"
-repository = "https://github.com/DessimozLab/edgehog"
 keywords = ["bioinformatics", "synteny", "ancestral gene order"]
 classifiers = [
     "Topic :: Scientific/Engineering :: Bio-Informatics",
@@ -30,12 +30,20 @@ oma = [
    "tables (>=3.10) ; python_version >= '3.11'",
 ]
 
+[project.urls]
+Repository = "https://github.com/DessimozLab/edgehog"
+
 [project.scripts]
 edgehog = 'edgehog.edgehog:main'
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^7.3.0"
+[dependency-groups]
+dev = [
+  "pytest>=7.3.0,<9",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv_build>=0.13.0,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
