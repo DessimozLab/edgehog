@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+
+# edgehog results (default output directory and the test_data run)
+edgehog_output/
+test-results/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store

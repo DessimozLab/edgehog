@@ -60,11 +60,13 @@ The dependencies are version pinned and will automatically be installed as well.
 ```edgeHOG``` was built and tested with python 3.9 and higher. To set up ```edgeHOG``` on your local machine, please follow the instructions below. 
 
 ```bash
-pip install poetry  # poetry is used as build and dependency resolving system.
+# uv is used as build and dependency management tool, see https://docs.astral.sh/uv/ for installation options
+pip install uv
 
 git clone https://github.com/dessimozlab/edgehog.git
 cd edgehog
-poetry install --extras=oma
+uv sync --extra oma   # creates a virtual environment in .venv with edgehog and its dependencies
+uv run edgehog --help
 ```
 
 ### For conda users
@@ -78,11 +80,10 @@ conda activate edgehog
 # And either
 pip install edgehog
 
-# Or
-pip install poetry
+# Or, from sources
 git clone https://github.com/dessimozlab/edgehog.git
 cd edgehog
-poetry install --extras=oma
+pip install ".[oma]"
 ```
 
 ## Usage
