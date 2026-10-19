@@ -101,7 +101,12 @@ def get_representative_hog_for_gene(ham, hogxml_entries):
 def assign_extant_synteny(genome, gene_dict, ham, orient_edges): 
     graph = nx.Graph(genome=genome)
     contiguity_dict = dict()
-    gene_keys = list(gene_dict.keys())
+    # gffs are not necessarily sorted: order the genes by contig (in order of first appearance in the gff)
+    # and by genomic coordinates on the contig
+    contig_rank = dict()
+    for contig, _ in gene_dict:
+        contig_rank.setdefault(contig, len(contig_rank))
+    gene_keys = sorted(gene_dict, key=lambda key: (contig_rank[key[0]], gene_dict[key]['start'], gene_dict[key]['end']))
 
     # find first gene with hogxml_entries, i.e. that is reported in orthoxml
     for first, gene_key in enumerate(gene_keys):
@@ -110,7 +115,8 @@ def assign_extant_synteny(genome, gene_dict, ham, orient_edges):
     else:
         raise ValueError('No gene with hogxml_entries found in genome %s' % genome.name)
 
-    old_contig = gene_keys[first][0]
+    old_key = gene_keys[first]
+    old_contig = old_key[0]
     hogxml_entries = gene_dict[gene_keys[first]]['hogxml_entries']
     old_gene = get_representative_hog_for_gene(ham, hogxml_entries)
     graph.add_node(old_gene, **gene_dict[gene_keys[first]], contig=old_contig)
@@ -124,7 +130,8 @@ def assign_extant_synteny(genome, gene_dict, ham, orient_edges):
                 # connect genes only if they are on the same contig
                 graph.add_edge(old_gene, gene, weight=1, unidirectional=0, convergent=0, divergent=0, children=[None], extant_descendants=[None])
                 if orient_edges:
-                    old_gene_strand = gene_dict[gene_keys[i-1]]['strand']
+                    # strand of the previous gene in the orthoxml, not of a skipped gene in between
+                    old_gene_strand = gene_dict[old_key]['strand']
                     gene_strand = gene_dict[gene_keys[i]]['strand']
                     try:
                         if old_gene_strand == gene_strand:
@@ -135,7 +142,7 @@ def assign_extant_synteny(genome, gene_dict, ham, orient_edges):
                             graph[old_gene][gene]['divergent'] = 1
                     except:
                         pass
-            old_gene, old_contig = gene, contig
+            old_gene, old_contig, old_key = gene, contig, gene_keys[i]
     # for cc in nx.connected_components(graph):
     #     if len(cc > 1):
     #         for i in range(0, len(cc)):

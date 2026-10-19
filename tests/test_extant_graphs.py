@@ -122,7 +122,6 @@ def test_find_gff_files(tmp_path):
 # features by contig and start coordinate (read_gff.py:100-117,
 # init_extant_synteny_graphs.py:88).
 
-@pytest.mark.xfail(strict=True, reason="#6: unsorted GFFs give wrong adjacencies")
 def test_unsorted_gff(tmp_path):
     gff = write_gff(tmp_path / "SP.gff",
                     gene("chr1", 100, 200, "+", "g1", "p1"),
@@ -131,7 +130,6 @@ def test_unsorted_gff(tmp_path):
     assert edge_set(build_graph(gff, ["p1", "p2", "p3"])) == edges("p1-p2", "p2-p3")
 
 
-@pytest.mark.xfail(strict=True, reason="#6: contigs interleaved in the GFF lose adjacencies")
 def test_interleaved_contigs(tmp_path):
     gff = write_gff(tmp_path / "SP.gff",
                     gene("chr1", 100, 200, "+", "g1", "p1"),
@@ -144,7 +142,6 @@ def test_interleaved_contigs(tmp_path):
 # previous linked gene if a gene missing from the orthoXML lies in between
 # (init_extant_synteny_graphs.py:111).
 
-@pytest.mark.xfail(strict=True, reason="#7: orientation uses the strand of a skipped gene")
 def test_orientation_ignores_skipped_gene(tmp_path):
     gff = write_gff(tmp_path / "SP.gff",
                     gene("chr1", 100, 200, "+", "g1", "p1"),
