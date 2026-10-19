@@ -142,19 +142,59 @@ def test_orientation_ignores_skipped_gene(tmp_path):
     assert context(build_graph(gff, ["p1", "p2"]), "p1", "p2") == {"unidirectional"}
 
 
-# Found while writing these tests: a genome name that is a prefix of another
-# one can match the other genome's GFF (regex '^NAME.*\.gff', first match in
-# os.listdir order), and a missing GFF raises IndexError instead of the
-# intended error message (init_extant_synteny_graphs.py:18-22).
+def find_gffs(directory, files, genome_names):
+    for name in files:
+        (directory / name).write_text("")
+    found = extant.get_gffs_of_extant_genomes(str(directory), [Genome(n) for n in genome_names])
+    return {g.name: os.path.basename(p) for g, p in found.items()}
 
-@pytest.mark.xfail(strict=True, reason="genome name prefix matches another genome's GFF")
-def test_find_gff_files_prefix_ambiguity(tmp_path, monkeypatch):
-    monkeypatch.setattr(extant.os, "listdir", lambda d: ["HUMAN2.gff", "HUMAN.gff"])
+
+# Issue #42: a genome name that is a prefix of another file name could match
+# that file's GFF (first match in os.listdir order).
+
+@pytest.mark.parametrize("listing", [["HUMAN2.gff", "HUMAN.gff"], ["HUMAN.gff", "HUMAN2.gff"]])
+def test_find_gff_files_prefix_ambiguity(tmp_path, monkeypatch, listing):
+    monkeypatch.setattr(extant.os, "listdir", lambda d: listing)
     found = extant.get_gffs_of_extant_genomes(str(tmp_path), [Genome("HUMAN")])
     assert os.path.basename(next(iter(found.values()))) == "HUMAN.gff"
 
 
-@pytest.mark.xfail(strict=True, raises=IndexError, reason="missing GFF raises IndexError instead of exiting with a message")
-def test_find_gff_files_missing(tmp_path):
+def test_find_gff_files_of_genomes_sharing_a_prefix(tmp_path):
+    assert find_gffs(tmp_path, ["HUMAN_A.gff", "HUMAN_ref.gff"], ["HUMAN", "HUMAN_A"]) == {
+        "HUMAN": "HUMAN_ref.gff", "HUMAN_A": "HUMAN_A.gff"}
+
+
+def test_find_gff_files_name_is_not_a_regex(tmp_path):
     with pytest.raises(SystemExit):
-        extant.get_gffs_of_extant_genomes(str(tmp_path), [Genome("HUMAN")])
+        find_gffs(tmp_path, ["Excoli.gff"], ["E.coli"])
+
+
+@pytest.mark.parametrize("name", ["HUMAN.gff.gz", "HUMAN.gff3.bz2", "HUMAN.gff.xz", "HUMAN.gff.zip"])
+def test_find_gff_files_compressed(tmp_path, name):
+    assert find_gffs(tmp_path, [name], ["HUMAN"]) == {"HUMAN": name}
+
+
+@pytest.mark.parametrize("files, expected", [
+    (["HUMAN.gff", "HUMAN.gff.md5"], "HUMAN.gff"),
+    (["HUMAN.gff.gz", "HUMAN.gff.gz.tbi"], "HUMAN.gff.gz"),
+    (["HUMAN.gff", "HUMAN.gff.v2.gff"], "HUMAN.gff"),
+    (["HUMAN.v2.gff", "HUMAN.v2.gff.md5"], "HUMAN.v2.gff"),
+])
+def test_find_gff_files_ignores_companion_files(tmp_path, files, expected):
+    assert find_gffs(tmp_path, files, ["HUMAN"]) == {"HUMAN": expected}
+
+
+def test_find_gff_files_requires_gff_extension(tmp_path):
+    with pytest.raises(SystemExit, match="does not exist"):
+        find_gffs(tmp_path, ["HUMAN.gff.old", "HUMAN.gff.md5"], ["HUMAN"])
+
+
+def test_find_gff_files_missing(tmp_path):
+    with pytest.raises(SystemExit, match="HUMAN.gff' does not exist"):
+        find_gffs(tmp_path, ["MOUSE.gff"], ["HUMAN"])
+
+
+@pytest.mark.parametrize("files", [["HUMAN.gff", "HUMAN.gff3"], ["HUMAN_v1.gff", "HUMAN_v2.gff"]])
+def test_find_gff_files_several_candidates(tmp_path, files):
+    with pytest.raises(SystemExit, match="several gffs found for genome 'HUMAN'"):
+        find_gffs(tmp_path, files, ["HUMAN"])
