@@ -2,10 +2,47 @@
 # -*- coding: utf-8 -*-
 
 
+import bz2
+import gzip
+import io
 import itertools
+import lzma
 import numpy
+import os
 import pandas
+import re
 import sys
+import zipfile
+
+
+# returns the content of the (possibly compressed) gff as a string,
+# without the optional ##FASTA section at the end of a GFF3 file
+def read_gff_text(gff):
+    gff = str(gff)
+    if gff.endswith('.zip'):
+        with zipfile.ZipFile(gff) as archive:
+            members = archive.namelist()
+            if len(members) != 1:
+                raise ValueError('expected a single file in the zip archive, found %d' % len(members))
+            with io.TextIOWrapper(archive.open(members[0])) as fh:
+                lines = list(itertools.takewhile(lambda line: not line.startswith('##FASTA'), fh))
+    else:
+        opener = {'.gz': gzip.open, '.bz2': bz2.open, '.xz': lzma.open}.get(os.path.splitext(gff)[1], open)
+        with opener(gff, 'rt') as fh:
+            lines = list(itertools.takewhile(lambda line: not line.startswith('##FASTA'), fh))
+    return ''.join(lines)
+
+
+# derive a protein_id for a CDS without one from its ID:
+# prodigal's IDs (<contig number>_<orf number>) become <contig>_<orf number>,
+# i.e. the header of the protein in prodigal's protein fasta; other IDs are used as is
+def protein_id_from_cds_id(genomic_accession, cds_id):
+    if not isinstance(cds_id, str):
+        return None
+    prodigal_id = re.match(r'^\d+_(\d+)$', cds_id)
+    if prodigal_id:
+        return genomic_accession + '_' + prodigal_id.group(1)
+    return cds_id
 
 
 # split the column attributes of the gff using the ";" field separator
@@ -97,7 +134,7 @@ def gff_to_dict(gff):
     useful_column_names = ['genomic_accession', 'type', 'start', 'end', 'strand', 'attributes']
     column_types = {'genomic_accession': str, 'type': str, 'start': int, 'end': int, 'strand': str, 'attributes': str}
     try:
-        df = pandas.read_csv(gff, sep='\t', comment='#', header=None, names=gff_column_names, usecols=useful_column_names, dtype=column_types)
+        df = pandas.read_csv(io.StringIO(read_gff_text(gff)), sep='\t', comment='#', header=None, names=gff_column_names, usecols=useful_column_names, dtype=column_types)
     except Exception as e:
         print('EXIT: \'%s\' does not comply with gff format requirements' % gff)
         print('Reading the gff exited with the following error:')
@@ -115,15 +152,18 @@ def gff_to_dict(gff):
     
     df.reset_index(inplace=True)
     df, only_cds = get_gene_position_and_cds_children(df)
-    df_proteins = df.loc[df['type'].isin(['CDS', 'Cds', 'cds'])]
-    if not 'protein_id' in df_proteins:
-        if 'ID' in df_proteins:
-            temp_id = df_proteins['ID'] 
+    is_cds = df['type'].isin(['CDS', 'Cds', 'cds'])
+    if not 'protein_id' in df:
+        if 'ID' in df:
+            id_key = 'ID'
         elif 'id' in df:
-            temp_id = df_proteins['id']
+            id_key = 'id'
         else:
             sys.exit('Neither the tag \'protein_id\' nor \'ID\' are present in the column \'attributes\' of the input gff: \'%s\'' % gff)
-        df_proteins['protein_id'] = df['genomic_accession'] + temp_id.apply(lambda x: '_' + x.split('_')[1]) 
+        df['protein_id'] = None
+        df.loc[is_cds, 'protein_id'] = [protein_id_from_cds_id(accession, cds_id)
+                                        for accession, cds_id in zip(df.loc[is_cds, 'genomic_accession'], df.loc[is_cds, id_key])]
+    df_proteins = df.loc[is_cds]
     if only_cds:
         df['gene_id'] = df['protein_id']
         df_genes = df
