@@ -93,6 +93,17 @@ def test_orthoxml_protein_ids_with_suffix(tmp_path, fmt):
     assert edge_set(graph) == edges("p1-p2")
 
 
+def test_prodigal_gff(tmp_path):
+    # orthoXML protIds are the headers of prodigal's protein fasta
+    from test_read_gff import PRODIGAL_GFF
+    path = tmp_path / "SP.gff"
+    path.write_text(PRODIGAL_GFF)
+    graph = build_graph(str(path), ["contigA_1", "contigA_2", "contigB_1"],
+                        prot_id_format="{} # 1 # 300 # 1 # ID=1_1;partial=10")
+    assert edge_set(graph) == edges("contigA_1-contigA_2")
+    assert context(graph, "contigA_1", "contigA_2") == {"convergent"}
+
+
 def test_representative_hog_is_majority_among_isoforms():
     hog_a, hog_b = Gene("A"), Gene("B")
     ham = StubHam({"e1": Gene("i1", hog_a), "e2": Gene("i2", hog_b), "e3": Gene("i3", hog_b)})
