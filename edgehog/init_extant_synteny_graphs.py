@@ -9,17 +9,32 @@ import networkx as nx
 from edgehog.read_gff import gff_to_dict
 
 
-# for each genome, identify whether <gff_directory>/<genome_name>.*.gff is in the gff directory and exit otherwise
+# for each genome, identify <gff_directory>/<genome_name>*.gff(3) and exit if there is none or several
+# a file is attributed to the longest genome name it starts with (HUMAN2.gff belongs to HUMAN2, not HUMAN),
+# and <genome_name>.gff(3) is preferred over other files starting with the genome name
 # returns a genome_to_gff dictionary
 def get_gffs_of_extant_genomes(gff_directory, genomes):
+    files = sorted(os.listdir(gff_directory))
+    patterns = {g: re.compile(re.escape(g.name) + r'(.*?)\.gff(3)?') for g in genomes}
+    file_owner = dict()
+    for f in files:
+        owners = [g for g in genomes if patterns[g].match(f)]
+        if owners:
+            file_owner[f] = max(owners, key=lambda g: len(g.name))
     genome_to_gff_dict = dict()
-    files = os.listdir(gff_directory)
-    for g in genomes: 
-        regex = r'^' + g.name + '.*\.gff(3)?' 
-        match = list(filter(re.compile(regex).match, files))[0]
+    for g in genomes:
+        candidates = [f for f in files if file_owner.get(f) is g]
+        exact = [f for f in candidates if patterns[g].match(f).group(1) == '']
+        if len(exact) == 1:
+            match = exact[0]
+        elif len(exact) == 0 and len(candidates) == 1:
+            match = candidates[0]
+        elif len(candidates) == 0:
+            sys.exit('\'%s.gff\' does not exist in the \'%s\' gff_directory' % (g.name, gff_directory))
+        else:
+            sys.exit('several gffs found for genome \'%s\' in the \'%s\' gff_directory: %s'
+                     % (g.name, gff_directory, ', '.join(exact or candidates)))
         genome_to_gff_dict[g] = os.path.join(os.path.abspath(gff_directory), match)
-        if not g in genome_to_gff_dict:
-            sys.exit('\'%s.gff\' does not exist or is empty in the \'%s\' gff_directory' % (g.name, gff_directory))
     return genome_to_gff_dict
 
 
