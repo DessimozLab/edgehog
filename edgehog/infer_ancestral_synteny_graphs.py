@@ -187,12 +187,11 @@ def leaves_to_root_synteny_propagation(ham, max_gaps, orient_edges):
     print('###################################')
     print('Bottom-up_phase: propagate count of adjacencies observed between two genes from children nodes to their parent node on the species tree '
           '(as long as the parent node has the two ancestral genes)')
-    nb_ancestors = ham.taxonomy.tree.n_internal_nodes
+    nb_ancestors = ham.taxonomy.tree.props['n_internal_nodes']
     anc_counter = 0
     for tree_node in ham.taxonomy.tree.traverse('postorder'):
-        try:
-            genome = tree_node.genome
-        except AttributeError:
+        genome = tree_node.props.get('genome')
+        if genome is None:
             print('No genome stored for {}'.format(tree_node.name))
             continue
         if isinstance(genome, pyham.AncestralGenome):
@@ -204,7 +203,7 @@ def leaves_to_root_synteny_propagation(ham, max_gaps, orient_edges):
             for child in tree_node.children:
                 # add a node in the parent graph, whenever a newly visited child gene with a parent is encountered
                 # this is at the basis of ancestral gene content reconstruction and allows for singletons in ancestral graphs
-                child_working_graph = child.bottom_up_synteny.copy()
+                child_working_graph = child.props['bottom_up_synteny'].copy()
                 for gene in child_working_graph:
                     if gene.parent is not None and not graph.has_node(gene.parent):
                         graph.add_node(gene.parent)
@@ -225,7 +224,7 @@ def leaves_to_root_synteny_propagation(ham, max_gaps, orient_edges):
                         assert adjacent_gene.parent in graph.nodes
                         ancestral_edge = (gene.parent, adjacent_gene.parent)
                         
-                        if isinstance(child.genome, pyham.ExtantGenome):
+                        if isinstance(child.props['genome'], pyham.ExtantGenome):
                             extant_descendants = [child]
                         else:
                             extant_descendants = child_working_graph[gene][adjacent_gene]['extant_descendants']
@@ -264,10 +263,10 @@ def leaves_to_root_synteny_propagation(ham, max_gaps, orient_edges):
                                 child_transitive_graph[gene.parent][adjacent_gene.parent]['convergent'] = edge_data['convergent']
                                 child_transitive_graph[gene.parent][adjacent_gene.parent]['divergent'] = edge_data['divergent']
                         
-                child.add_feature('transitive_synteny', child_transitive_graph)
-                child.add_feature('real_edge_to_transitive_edge', real_edge_to_transitive_edge)
+                child.add_prop('transitive_synteny', child_transitive_graph)
+                child.add_prop('real_edge_to_transitive_edge', real_edge_to_transitive_edge)
             
-            tree_node.add_feature('bottom_up_synteny', graph)
+            tree_node.add_prop('bottom_up_synteny', graph)
             
 ####################################################################################         
 # TOP-DOWN PHASE
@@ -286,19 +285,18 @@ def leaves_to_root_synteny_propagation(ham, max_gaps, orient_edges):
 def root_to_leaves_edge_trimming(ham, orient_edges):
     print('###################################')
     print('Top-down phase: prune any adjacency propagated before the last ancestor in which this adjacency is inferred to have emerged ')
-    nb_ancestors = ham.taxonomy.tree.n_internal_nodes
+    nb_ancestors = ham.taxonomy.tree.props['n_internal_nodes']
     anc_counter = 0
     for tree_node in ham.taxonomy.tree.traverse('preorder'):
-        try:
-            genome = tree_node.genome
-        except AttributeError:
+        genome = tree_node.props.get('genome')
+        if genome is None:
             print('No genome stored for {}'.format(tree_node.name))
             continue
         if isinstance(genome, pyham.AncestralGenome):
             anc_counter += 1
             print('processing ancestral genome %d/%d: %s'  % (anc_counter, nb_ancestors, genome.name))
             edges_to_remove = list()
-            graph = tree_node.bottom_up_synteny.copy()
+            graph = tree_node.props['bottom_up_synteny'].copy()
             k = 0
             for gene, adjacent_gene, edge_data in graph.edges.data():
                 weight = edge_data['weight']
@@ -311,7 +309,7 @@ def root_to_leaves_edge_trimming(ham, orient_edges):
                 if orient_edges:
                     u = c = d = 0
                 for child in tree_node.children:
-                    child_transitive_graph = child.transitive_synteny
+                    child_transitive_graph = child.props['transitive_synteny']
                     try:
                         child_weight = child_transitive_graph[gene][adjacent_gene]['weight']
                         if orient_edges:
@@ -338,11 +336,11 @@ def root_to_leaves_edge_trimming(ham, orient_edges):
                 if (remove_edge or orient_edges) and tree_node.up:
                     try:
                         # either there was some reconnection between genes because of insertion in descendant
-                        transitive_edge = tree_node.real_edge_to_transitive_edge[(gene, adjacent_gene)]
+                        transitive_edge = tree_node.props.get('real_edge_to_transitive_edge', {})[(gene, adjacent_gene)]
                     except:
                         # or the real edge in current genome was also present in ancestor
                         transitive_edge = (gene.parent, adjacent_gene.parent)
-                    ancestral_graph = tree_node.up.top_down_synteny
+                    ancestral_graph = tree_node.up.props['top_down_synteny']
                     graph[gene][adjacent_gene]['nb_internal_nodes_from_ancestor_with_updated_weight'] = 1
                     if transitive_edge[0] == transitive_edge[1] and transitive_edge[0] in ancestral_graph.nodes:
                         remove_edge = False
@@ -377,7 +375,7 @@ def root_to_leaves_edge_trimming(ham, orient_edges):
                         c = initial_c
                         d = initial_d
             graph.remove_edges_from(edges_to_remove)
-            tree_node.add_feature('top_down_synteny', graph)
+            tree_node.add_prop('top_down_synteny', graph)
             
 
 def compute_neighbor_cost(graph, node, previous_node, max_path_len = 500):
@@ -426,18 +424,17 @@ def linearize_graphs(ham):
     print('###################################')
     print('Linearization: infer the most likely ancestral genome ...')
 
-    nb_ancestors = ham.taxonomy.tree.n_internal_nodes
+    nb_ancestors = ham.taxonomy.tree.props['n_internal_nodes']
     anc_counter = 0
     for tree_node in ham.taxonomy.tree.traverse('preorder'):
-        try:
-            genome = tree_node.genome
-        except AttributeError:
+        genome = tree_node.props.get('genome')
+        if genome is None:
             print('No genome stored for {}'.format(tree_node.name))
             continue
         if isinstance(genome, pyham.AncestralGenome):
             anc_counter += 1
             print('processing ancestral genome %d/%d: %s'  % (anc_counter, nb_ancestors, genome.name))
-            graph = tree_node.top_down_synteny.copy()
+            graph = tree_node.props['top_down_synteny'].copy()
         
             conflicting_nodes = [(n, d) for (n, d) in sorted(graph.degree(), key=lambda pair: pair[1]) if d > 2]
             sum_weights = list()
@@ -511,5 +508,5 @@ def linearize_graphs(ham):
                         if idx < len(removed_edges):
                             removed_edges.pop(idx)
                     
-            tree_node.add_feature('linear_synteny', graph)
+            tree_node.add_prop('linear_synteny', graph)
         

@@ -7,17 +7,16 @@ def date_edges(ham):
     print('###################################')
     print('Predicting age of extant edges ...')
     for tree_node in ham.taxonomy.tree.traverse('preorder'):
-        try:
-            genome = tree_node.genome
-        except AttributeError:
+        genome = tree_node.props.get('genome')
+        if genome is None:
             print('No genome stored for {}'.format(tree_node.name))
             continue
         if isinstance(genome, pyham.AncestralGenome):
-            graph = tree_node.top_down_synteny
+            graph = tree_node.props['top_down_synteny']
         elif isinstance(genome, pyham.ExtantGenome):
-            graph = tree_node.bottom_up_synteny
+            graph = tree_node.props['bottom_up_synteny']
         if tree_node.up:
-            parent_graph = tree_node.up.top_down_synteny
+            parent_graph = tree_node.up.props['top_down_synteny']
         for gene, adjacent_gene, edge_attributes in graph.edges.data():
             if not tree_node.up:
                 graph[gene][adjacent_gene]["lca_node"] = tree_node
@@ -30,25 +29,24 @@ def date_edges(ham):
                         graph[gene][adjacent_gene]["lca_node"] = parent_graph[gene.parent][adjacent_gene.parent]["lca_node"]
                     else:
                         graph[gene][adjacent_gene]["lca_node"] = tree_node
-            graph[gene][adjacent_gene]["lca"] = graph[gene][adjacent_gene]["lca_node"].genome.name
-            graph[gene][adjacent_gene]["age"] = 1 - graph[gene][adjacent_gene]["lca_node"].red
+            graph[gene][adjacent_gene]["lca"] = graph[gene][adjacent_gene]["lca_node"].props['genome'].name
+            graph[gene][adjacent_gene]["age"] = 1 - graph[gene][adjacent_gene]["lca_node"].props['red']
 
 
 def phylostratify(ham):
     print('###################################')
     print('Phylostratigraphy ...')
     for tree_node in ham.taxonomy.tree.traverse('preorder'):
-        try:
-            genome = tree_node.genome
-        except AttributeError:
+        genome = tree_node.props.get('genome')
+        if genome is None:
             print('No genome stored for {}'.format(tree_node.name))
             continue
         if tree_node.up:
             if isinstance(genome, pyham.AncestralGenome):
-                graph = tree_node.top_down_synteny
+                graph = tree_node.props['top_down_synteny']
             elif isinstance(genome, pyham.ExtantGenome):
-                graph = tree_node.bottom_up_synteny
-            parent_graph = tree_node.up.top_down_synteny
+                graph = tree_node.props['bottom_up_synteny']
+            parent_graph = tree_node.up.props['top_down_synteny']
             
             parent_occurrence = dict()
             for gene in graph:
@@ -89,4 +87,4 @@ def phylostratify(ham):
                     except:
                         stratigraphy["lost_edges_due_to_gene_loss"] += 1
                     
-            tree_node.add_feature('stratigraphy', stratigraphy)      
+            tree_node.add_prop('stratigraphy', stratigraphy)      

@@ -90,7 +90,7 @@ pip install ".[oma]"
 
 ```
 usage: edgehog [-h] [--version] [--output_directory OUTPUT_DIRECTORY] 
-               --species_tree SPECIES_TREE  --hogs HOGS 
+               [--species_tree SPECIES_TREE] --hogs HOGS 
                [--gff_directory GFF_DIRECTORY] [--hdf5 HDF5] [--orient_edges] 
                [--date_edges] [--phylostratify] [--max_gaps MAX_GAPS] 
                [--include_extant_genes] [--out-format {TSV,HDF5}]
@@ -104,7 +104,9 @@ optional arguments:
   --output_directory OUTPUT_DIRECTORY
                         path to output directory (default is ./edgehog_output)
   --species_tree SPECIES_TREE
-                        path to species/genomes phylogenetic tree (newick format)
+                        path to species/genomes phylogenetic tree (newick format). Can be omitted if the HOGs
+                        file contains the species tree as <taxonomy> section; if both are given, the species
+                        tree is used
   --hogs HOGS           path to the HierarchicalGroups.orthoxml file in which HOGs are stored
   --gff_directory GFF_DIRECTORY
                         path to directory with the gffs of extant genomes (each gff file must be named according 
@@ -131,7 +133,7 @@ optional arguments:
 ## Input data
 
 Three types of input data are needed for ```edgeHOG``` to run:
-* a phylogenetic tree of species/genomes of interest (in newick format)
+* a phylogenetic tree of species/genomes of interest (in newick format, or as `<taxonomy>` section of the HierarchicalGroups.orthoxml file)
 * the annotation of each of these genomes (e.g. in the form of a directory of gff files)
 * an HierarchicalGroups.orthoxml file corresponding to the extant genomes
 
@@ -144,11 +146,13 @@ Since these input data are intersected, they must comply with the following requ
 
 A phylogenetic tree of the input genomes/species must be provided in the newick format. If internal nodes are not named, they will be named based on the concatenation of the names of their descendant leaves
 
+Alternatively, the species tree can be taken from the HierarchicalGroups.orthoxml file, if it contains the tree as `<taxonomy>` section (e.g. orthoXML files exported from the OMA browser). In this case, omit ```--species_tree```. If a species tree is given as well, it is used instead of the `<taxonomy>` section. Missing branch lengths count as 1 for the relative evolutionary divergence (RED) scores.
+
 * The species phylogenetic tree used in the OMA database can be downloaded [here](https://omabrowser.org/All/speciestree.nwk)
 * The high-quality GTDB archaeal and bacterial species trees, along with metadata can be found [here](https://data.gtdb.ecogenomic.org/releases/latest/)
-* To use the tree or a subtree of the NCBI taxonomy database, the ete3 python package has some [useful build-in functions](http://etetoolkit.org/docs/latest/tutorial/tutorial_ncbitaxonomy.html)
+* To use the tree or a subtree of the NCBI taxonomy database, the ete4 python package has some [useful build-in functions](https://etetoolkit.github.io/ete/tutorial/tutorial_taxonomy.html)
 
-To prune a tree in order to obtain only the phylogeny of your genomes of interest, please refer to the corresponding [ete3 tutorial](http://etetoolkit.org/docs/latest/tutorial/tutorial_trees.html#pruning-trees)
+To prune a tree in order to obtain only the phylogeny of your genomes of interest, please refer to the corresponding [ete4 tutorial](https://etetoolkit.github.io/ete/tutorial/tutorial_trees.html#pruning-trees)
 
 If you don't have a species tree available for your genomes, you can follow [this tutorial](https://github.com/DessimozLab/f1000_PhylogeneticTree) on how to use OMA Browser and OMA standalone for species tree inference.
 

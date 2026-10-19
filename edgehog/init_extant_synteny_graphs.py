@@ -185,8 +185,8 @@ def init_extant_graphs(cpu, ham, hogs_file, gff_directory, hogxml_entries, prote
         g = graphs[i]
         contiguity_dict = contiguity_dicts[i]
         genome = g.graph['genome']
-        genome.taxon.add_feature('bottom_up_synteny', g)
-        genome.taxon.add_feature('contiguity_dict', contiguity_dict)  
+        genome.taxon.add_prop('bottom_up_synteny', g)
+        genome.taxon.add_prop('contiguity_dict', contiguity_dict)  
     return ham
 
 

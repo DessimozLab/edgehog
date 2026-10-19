@@ -2,24 +2,28 @@
 # -*- coding: utf-8 -*-
 
 
-from ete3 import Tree
+from ete4 import Tree
 import pyham
 import sys
 
 
 def read_tree(tree_path):
     try:
-        tree = Tree(tree_path, format=1)
+        tree = Tree(tree_path, parser=1)
     except Exception as e:
         print('error: impossible to read the species tree \'%s\'' % tree_path)
         sys.exit(e)
     return tree
             
 
+# without tree_path, pyham builds the species tree from the <taxonomy> section of the orthoxml
 def map_hogs_onto_tree(hogs_file, tree_path, hdf5):
     if hdf5:
         use_internal_names = True
         species_resolve_mode = "OMA"
+    elif tree_path is None:
+        use_internal_names = True
+        species_resolve_mode = None
     else:
         tree = read_tree(tree_path)
         # test if root has a name to decide whether or not internal nodes must be named by pyham

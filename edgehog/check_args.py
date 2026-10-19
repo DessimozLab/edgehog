@@ -30,7 +30,7 @@ def check_file_extension(file, file_type):
 
 def print_args(args, out_dir):
     print('output directory: \'%s\'' % out_dir)
-    print('species tree:     \'%s\'' % args.species_tree)
+    print('species tree:     \'%s\'' % (args.species_tree if args.species_tree else '<taxonomy> of the HOGs file'))
     print('HOGs.orthoxml:    \'%s\'' % args.hogs)
     print('gff directory:    \'%s\'' % args.gff_directory)
     
@@ -48,7 +48,8 @@ def check_args(args):
     # check output directory exists
     out_dir = check_out_dir(os.path.abspath(args.output_directory))
     # check mandatory input files exist and have the correct extension
-    check_path_exists(args.species_tree)
+    if args.species_tree:
+        check_path_exists(args.species_tree)
     check_path_exists(args.hogs)
     check_file_extension(args.hogs, 'orthoxml')
     if args.gff_directory:

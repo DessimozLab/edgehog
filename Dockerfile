@@ -7,6 +7,9 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 WORKDIR /app
 
+# ete4 is only distributed as source and needs a C compiler to build
+RUN apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev && rm -rf /var/lib/apt/lists/*
+
 # install dependencies first so they are cached independently of source changes
 COPY pyproject.toml uv.lock README.md LICENSE.txt ./
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-dev --no-install-project

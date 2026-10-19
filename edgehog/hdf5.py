@@ -67,7 +67,7 @@ class HDF5Writer:
         dfs = []
         for evidence, graph in zip(
                 ("linearized", "parsimonious", "any"),
-                (tree_node.linear_synteny, tree_node.top_down_synteny, tree_node.bottom_up_synteny)):
+                (tree_node.props['linear_synteny'], tree_node.props['top_down_synteny'], tree_node.props['bottom_up_synteny'])):
             data = []
             ev = AncestralSyntenyRels.columns['Evidence'].enum[evidence]
             print(f"process level {taxid} - graph {evidence} - |N|,|V| = {len(graph.nodes)},{len(graph.edges)}")
@@ -127,16 +127,13 @@ class HDF5Writer:
 
         gs = self.genome_lookup[taxid]
         os_code = gs['UniProtSpeciesCode'].decode()
-        try:
-            os = tree_node.genome_code
-            if os != os_code:
-                print(f"[WARNING] non-matching species codes: {os} vs {os_code}")
-                return
-        except AttributeError:
-            pass
+        os = tree_node.props.get('genome_code')
+        if os is not None and os != os_code:
+            print(f"[WARNING] non-matching species codes: {os} vs {os_code}")
+            return
 
         # graph is input synteny graph stored in bottom_up_synteny
-        graph = tree_node.bottom_up_synteny
+        graph = tree_node.props['bottom_up_synteny']
         ev = ExtantSyntenyRels.columns['Evidence'].enum["linearized"]
         orient_enum = ExtantSyntenyRels.columns['Orientation'].enum
 
@@ -251,9 +248,9 @@ def init_extant_graphs_from_hdf5(ham, hdf5_file, orient_edges):
                     except:
                         pass
             old_gene, old_contig, old_gene_index = gene, contig, gene_index
-        gene.genome.taxon.add_feature('bottom_up_synteny', graph)
-        gene.genome.taxon.add_feature('contiguity_dict', contiguity_dict)
-        gene.genome.taxon.add_feature('genome_code', genome.uniprot_species_code)
-        gene.genome.taxon.add_feature('taxid', genome.ncbi_taxon_id)
+        gene.genome.taxon.add_prop('bottom_up_synteny', graph)
+        gene.genome.taxon.add_prop('contiguity_dict', contiguity_dict)
+        gene.genome.taxon.add_prop('genome_code', genome.uniprot_species_code)
+        gene.genome.taxon.add_prop('taxid', genome.ncbi_taxon_id)
     h5.close()
     return ham

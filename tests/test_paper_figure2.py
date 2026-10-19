@@ -113,19 +113,19 @@ def weighted_edges(graph):
 
 def test_fig2a_pink_bottom_up_graph(fig2):
     # S1 and S2 propagated graphs: A2-A1-B-C-D-E and A2-E-A1-B (X is gained)
-    assert weighted_edges(fig2["Pink"].bottom_up_synteny) == {
+    assert weighted_edges(fig2["Pink"].props["bottom_up_synteny"]) == {
         frozenset("ED"): 1, frozenset("DC"): 1, frozenset("CB"): 1, frozenset(("B", "A1")): 2,
         frozenset(("A1", "A2")): 1, frozenset(("A2", "E")): 1, frozenset(("E", "A1")): 1}
 
 
 def test_fig2a_pink_propagated_graph(fig2):
     # propagated forms: A1-B -> A-C, B-C -> A-C, A2-A1 -> A
-    assert weighted_edges(fig2["Pink"].transitive_synteny) == {
+    assert weighted_edges(fig2["Pink"].props["transitive_synteny"]) == {
         frozenset("ED"): 1, frozenset("DC"): 1, frozenset("AC"): 1, frozenset("AE"): 2}
 
 
 def test_fig2a_pink_propagated_forms(fig2):
-    mapping = fig2["Pink"].real_edge_to_transitive_edge
+    mapping = fig2["Pink"].props["real_edge_to_transitive_edge"]
     forms = {frozenset((label(a), label(b))): frozenset(label(n) for n in form) for (a, b), form in mapping.items()}
     assert forms[frozenset(("A1", "B"))] == frozenset("AC")
     assert forms[frozenset(("B", "C"))] == frozenset("AC")
@@ -133,12 +133,12 @@ def test_fig2a_pink_propagated_forms(fig2):
 
 def test_fig2a_s3_propagated_graph_edges(fig2):
     # S3 propagated graph: A-C-D-E (Y is gained, D1/E1/D2/E2 collapse onto D-E)
-    assert set(weighted_edges(fig2["S3"].transitive_synteny)) == edges("A-C", "C-D", "D-E")
+    assert set(weighted_edges(fig2["S3"].props["transitive_synteny"])) == edges("A-C", "C-D", "D-E")
 
 
 def test_fig2a_root_bottom_up_graph_edges(fig2):
-    assert set(weighted_edges(fig2["Root"].bottom_up_synteny)) == edges("E-D", "D-C", "A-C", "A-E")
-    weights = weighted_edges(fig2["Root"].bottom_up_synteny)
+    assert set(weighted_edges(fig2["Root"].props["bottom_up_synteny"])) == edges("E-D", "D-C", "A-C", "A-E")
+    weights = weighted_edges(fig2["Root"].props["bottom_up_synteny"])
     assert weights[frozenset("DC")] == 2
     assert weights[frozenset("AC")] == 2
     assert weights[frozenset("AE")] == 2
@@ -150,8 +150,8 @@ def test_fig2a_root_bottom_up_graph_edges(fig2):
 
 @pytest.mark.xfail(strict=True, reason="Fig. 2a: D-E weight from the S3 tandem duplicates is 3 in the code, 2 in the figure")
 def test_fig2a_tandem_duplicate_weights(fig2):
-    assert weighted_edges(fig2["S3"].transitive_synteny)[frozenset("DE")] == 2
-    assert weighted_edges(fig2["Root"].bottom_up_synteny)[frozenset("DE")] == 3
+    assert weighted_edges(fig2["S3"].props["transitive_synteny"])[frozenset("DE")] == 2
+    assert weighted_edges(fig2["Root"].props["bottom_up_synteny"])[frozenset("DE")] == 3
 
 
 # ---------------------------------------------------------------------------
@@ -160,19 +160,19 @@ def test_fig2a_tandem_duplicate_weights(fig2):
 
 def test_fig2b_root_top_down(fig2):
     # E-D, D-C, A-C supported by two children; A-E only by Pink -> removed
-    assert set(weighted_edges(fig2["Root"].top_down_synteny)) == edges("E-D", "D-C", "A-C")
+    assert set(weighted_edges(fig2["Root"].props["top_down_synteny"])) == edges("E-D", "D-C", "A-C")
 
 
 def test_fig2b_pink_top_down(fig2):
     # kept: B-A1 (two children), E-D and D-C (one child and parent),
     # C-B (propagated form A-C in parent), A2-A1 (propagated form A in parent);
     # removed: A2-E and E-A1 (propagated form A-E not in parent)
-    assert set(weighted_edges(fig2["Pink"].top_down_synteny)) == edges("E-D", "D-C", "C-B", "B-A1", "A1-A2")
+    assert set(weighted_edges(fig2["Pink"].props["top_down_synteny"])) == edges("E-D", "D-C", "C-B", "B-A1", "A1-A2")
 
 
 def test_fig2b_linearized(fig2):
-    assert set(weighted_edges(fig2["Root"].linear_synteny)) == edges("E-D", "D-C", "A-C")
-    assert set(weighted_edges(fig2["Pink"].linear_synteny)) == edges("A2-A1", "A1-B", "B-C", "C-D", "D-E")
+    assert set(weighted_edges(fig2["Root"].props["linear_synteny"])) == edges("E-D", "D-C", "A-C")
+    assert set(weighted_edges(fig2["Pink"].props["linear_synteny"])) == edges("A2-A1", "A1-B", "B-C", "C-D", "D-E")
 
 
 # ---------------------------------------------------------------------------
@@ -191,9 +191,9 @@ def fig2c(monkeypatch):
         pair, w = spec.split(":")
         graph.add_edge(*pair.split("-"), weight=int(w))
     ham, nodes = make_ham("(L1,L2)R;")
-    nodes["R"].add_feature("top_down_synteny", graph)
+    nodes["R"].add_prop("top_down_synteny", graph)
     linearize_graphs(ham)
-    return {frozenset(e) for e in nodes["R"].linear_synteny.edges()}
+    return {frozenset(e) for e in nodes["R"].props["linear_synteny"].edges()}
 
 
 def test_fig2c_conflicts_resolved(fig2c):

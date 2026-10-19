@@ -73,7 +73,7 @@ def graph_to_df(graph, genome, edge_datation, orient_edges, label_dict=None, ann
                         edge_dict['nb_internal_nodes_from_ancestor_with_updated_weight'].append(graph[u][v]['nb_internal_nodes_from_ancestor_with_updated_weight'])
                     else:
                         edge_dict['nb_internal_nodes_from_ancestor_with_updated_weight'].append(None)
-                    edge_dict['supporting_children'].append(";".join(sorted(set([child.genome.name for child in graph[u][v]['children']]))))
+                    edge_dict['supporting_children'].append(";".join(sorted(set([child.props['genome'].name for child in graph[u][v]['children']]))))
                 else:
                     edge_dict['nb_internal_nodes_from_ancestor_with_updated_weight'].append(0)
                     edge_dict['supporting_children'].append(None)
@@ -122,22 +122,20 @@ def write_as_hdf5(args, ham, out_dir):
     from .hdf5 import HDF5Writer
     with HDF5Writer(os.path.join(out_dir, "Synteny.h5"), args.hdf5, date_edges=args.date_edges, orient_edges=args.orient_edges) as writer:
         for tree_node in ham.taxonomy.tree.traverse("preorder"):
-            try:
-                genome = tree_node.genome
-            except AttributeError:
+            genome = tree_node.props.get('genome')
+            if genome is None:
                 print('No genome stored for {}'.format(tree_node.name))
                 continue
             if isinstance(genome, pyham.AncestralGenome):
                 try:
-                    taxid = writer.get_taxid_from_hog_names(tree_node.linear_synteny)
+                    taxid = writer.get_taxid_from_hog_names(tree_node.props['linear_synteny'])
                 except Exception as e:
                     print("Error to retrieve taxid for {}: {}".format(tree_node.name, e))
                     raise
                 writer.add_graph_at_level(taxid, tree_node)
             elif isinstance(genome, pyham.ExtantGenome):
-                try:
-                    taxid = genome.taxon.taxid
-                except AttributeError:
+                taxid = genome.taxon.props.get('taxid')
+                if taxid is None:
                     taxid = int(genome.taxid)
                 writer.add_extant_graph(taxid, tree_node)
 
@@ -154,16 +152,15 @@ def write_output(args, ham, out_dir):
             genome_dict[key] = [None]
     g = 0
     for tree_node in ham.taxonomy.tree.traverse('preorder'):
-        try:
-            genome = tree_node.genome
-        except AttributeError:
+        genome = tree_node.props.get('genome')
+        if genome is None:
             print('No genome stored for {}'.format(tree_node.name))
             continue
 
         if isinstance(genome, pyham.AncestralGenome):
-            label_dict, annotation_dict = label_nodes(tree_node.bottom_up_synteny)
+            label_dict, annotation_dict = label_nodes(tree_node.props['bottom_up_synteny'])
 
-            df = graph_to_df(tree_node.bottom_up_synteny, genome, False, args.orient_edges, label_dict,
+            df = graph_to_df(tree_node.props['bottom_up_synteny'], genome, False, args.orient_edges, label_dict,
                              annotation_dict, args.include_extant_genes)
             df.to_csv(os.path.join(out_dir, str(g) + '_bottom-up_synteny_graph_edges.tsv.gz'),
                       compression='gzip',
@@ -171,7 +168,7 @@ def write_output(args, ham, out_dir):
                       header=True,
                       sep='\t')
 
-            df = graph_to_df(tree_node.top_down_synteny, genome, args.date_edges, args.orient_edges, label_dict,
+            df = graph_to_df(tree_node.props['top_down_synteny'], genome, args.date_edges, args.orient_edges, label_dict,
                              annotation_dict, args.include_extant_genes)
             df.to_csv(os.path.join(out_dir, str(g) + '_top-down_synteny_graph_edges.tsv.gz'),
                       compression='gzip',
@@ -179,7 +176,7 @@ def write_output(args, ham, out_dir):
                       header=True,
                       sep='\t')
 
-            df = graph_to_df(tree_node.linear_synteny, genome, args.date_edges, args.orient_edges, label_dict,
+            df = graph_to_df(tree_node.props['linear_synteny'], genome, args.date_edges, args.orient_edges, label_dict,
                              annotation_dict, args.include_extant_genes)
             df.to_csv(os.path.join(out_dir, str(g) + '_linearized_synteny_graph_edges.tsv.gz'),
                       compression='gzip',
@@ -188,7 +185,7 @@ def write_output(args, ham, out_dir):
                       sep='\t')
         else:
             # extant genome
-            df = graph_to_df(tree_node.bottom_up_synteny, genome, args.date_edges, args.orient_edges)
+            df = graph_to_df(tree_node.props['bottom_up_synteny'], genome, args.date_edges, args.orient_edges)
             df.to_csv(os.path.join(out_dir, str(g) + '_extant_synteny_graph_edges.tsv.gz'),
                       compression='gzip',
                       index=False,
@@ -198,12 +195,12 @@ def write_output(args, ham, out_dir):
 
         genome_dict['genome_id'].append(g)
         genome_dict['name'].append(genome.name)
-        genome_dict['nb_descendant_leaves'].append(tree_node.n_desc_leaves)
-        genome_dict['level_from_root'].append(tree_node.level)
-        genome_dict['RED_score'].append('%.2f' % tree_node.red)
+        genome_dict['nb_descendant_leaves'].append(tree_node.props['n_desc_leaves'])
+        genome_dict['level_from_root'].append(tree_node.props['level'])
+        genome_dict['RED_score'].append('%.2f' % tree_node.props['red'])
 
         if args.phylostratify and tree_node.up:
-            stratigraphy = tree_node.stratigraphy
+            stratigraphy = tree_node.props['stratigraphy']
             for key in stratigraphy_columns:
                 genome_dict[key].append(stratigraphy[key])
 
