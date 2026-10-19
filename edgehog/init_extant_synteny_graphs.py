@@ -9,13 +9,14 @@ import networkx as nx
 from edgehog.read_gff import gff_to_dict
 
 
-# for each genome, identify <gff_directory>/<genome_name>*.gff(3) and exit if there is none or several
+# for each genome, identify <gff_directory>/<genome_name>*.gff(3), optionally compressed (.gz, .bz2, .xz, .zip),
+# and exit if there is none or several; other files such as checksums or indexes (.md5, .tbi) are ignored
 # a file is attributed to the longest genome name it starts with (HUMAN2.gff belongs to HUMAN2, not HUMAN),
 # and <genome_name>.gff(3) is preferred over other files starting with the genome name
 # returns a genome_to_gff dictionary
 def get_gffs_of_extant_genomes(gff_directory, genomes):
     files = sorted(os.listdir(gff_directory))
-    patterns = {g: re.compile(re.escape(g.name) + r'(.*?)\.gff(3)?') for g in genomes}
+    patterns = {g: re.compile(re.escape(g.name) + r'(.*?)\.gff3?(\.(gz|bz2|xz|zip))?$') for g in genomes}
     file_owner = dict()
     for f in files:
         owners = [g for g in genomes if patterns[g].match(f)]

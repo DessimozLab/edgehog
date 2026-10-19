@@ -169,8 +169,24 @@ def test_find_gff_files_name_is_not_a_regex(tmp_path):
         find_gffs(tmp_path, ["Excoli.gff"], ["E.coli"])
 
 
-def test_find_gff_files_compressed(tmp_path):
-    assert find_gffs(tmp_path, ["HUMAN.gff.gz"], ["HUMAN"]) == {"HUMAN": "HUMAN.gff.gz"}
+@pytest.mark.parametrize("name", ["HUMAN.gff.gz", "HUMAN.gff3.bz2", "HUMAN.gff.xz", "HUMAN.gff.zip"])
+def test_find_gff_files_compressed(tmp_path, name):
+    assert find_gffs(tmp_path, [name], ["HUMAN"]) == {"HUMAN": name}
+
+
+@pytest.mark.parametrize("files, expected", [
+    (["HUMAN.gff", "HUMAN.gff.md5"], "HUMAN.gff"),
+    (["HUMAN.gff.gz", "HUMAN.gff.gz.tbi"], "HUMAN.gff.gz"),
+    (["HUMAN.gff", "HUMAN.gff.v2.gff"], "HUMAN.gff"),
+    (["HUMAN.v2.gff", "HUMAN.v2.gff.md5"], "HUMAN.v2.gff"),
+])
+def test_find_gff_files_ignores_companion_files(tmp_path, files, expected):
+    assert find_gffs(tmp_path, files, ["HUMAN"]) == {"HUMAN": expected}
+
+
+def test_find_gff_files_requires_gff_extension(tmp_path):
+    with pytest.raises(SystemExit, match="does not exist"):
+        find_gffs(tmp_path, ["HUMAN.gff.old", "HUMAN.gff.md5"], ["HUMAN"])
 
 
 def test_find_gff_files_missing(tmp_path):
