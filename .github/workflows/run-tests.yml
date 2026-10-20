@@ -10,9 +10,15 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental }}
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+        experimental: [false]
+        include:
+          - python-version: "3.15"
+            experimental: true
 
     steps:
     - uses: actions/checkout@v4
@@ -21,7 +27,19 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies and package
+      if: ${{ !matrix.experimental }}
       run: uv sync --locked
+    # Python versions not yet allowed by requires-python: widen the bound in
+    # this checkout only and resolve dependencies afresh instead of using uv.lock
+    - name: Install dependencies and package (unreleased Python version)
+      if: ${{ matrix.experimental }}
+      env:
+        PY_VERSION: ${{ matrix.python-version }}
+      run: |
+        upper="${PY_VERSION%%.*}.$(( ${PY_VERSION#*.} + 1 ))"
+        sed -i -E "s/^(requires-python = \">=[0-9.]+,<)[0-9.]+\"/\1${upper}\"/" pyproject.toml
+        grep -q "^requires-python = \".*<${upper}\"" pyproject.toml
+        uv sync
     - name: Check edgehog command-line entry point
       run: uv run edgehog --version
     - name: Test with pytest
