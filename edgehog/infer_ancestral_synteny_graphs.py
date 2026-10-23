@@ -109,8 +109,12 @@ def orient_reconnected_edges(wA, uA, cA, dA, wB, uB, cB, dB):
 #               A-c-E      /
 #    weight =    7 1      /
 #                  \     /
-#                    A-E 
-#    weight =         8
+#                  A-c-E and A-E
+#    weight =       7 1      1
+#    removing c reconnects A-E with the minimal weight min(7, 1) = 1;
+#    as A-E is already present, this weight is added to it:
+#                    A-E
+#    weight =         2
 ####################################################################################     
 def build_transitive_graph(graph, orient_edges, max_gap_length = 2):
     real_edge_to_transitive_edge = dict()
@@ -132,35 +136,44 @@ def build_transitive_graph(graph, orient_edges, max_gap_length = 2):
                     if (gene, right_gene) in gap_length:
                         gap += gap_length[(gene, right_gene)]
                     if gap <= max_gap_length:
+                        weight = min(graph[left_gene][gene]["weight"], graph[gene][right_gene]["weight"])
+                        children = graph[left_gene][gene]["children"] + graph[gene][right_gene]["children"]
+                        extant_descendants = graph[left_gene][gene]["extant_descendants"] + graph[gene][right_gene]["extant_descendants"]
+                        if orient_edges:
+                            wA, uA, cA, dA = graph[left_gene][gene]["weight"], graph[left_gene][gene]["unidirectional"], graph[left_gene][gene]["convergent"], graph[left_gene][gene]["divergent"]
+                            wB, uB, cB, dB = graph[gene][right_gene]["weight"], graph[gene][right_gene]["unidirectional"], graph[gene][right_gene]["convergent"], graph[gene][right_gene]["divergent"]
+                            u, c, d = orient_reconnected_edges(wA, uA, cA, dA, wB, uB, cB, dB)
                         if not graph.has_edge(left_gene, right_gene):
-                             graph.add_edge(left_gene, right_gene, 
-                                            weight = min(graph[left_gene][gene]["weight"], graph[gene][right_gene]["weight"]),
-                                            children = list(set(graph[left_gene][gene]["children"] + graph[gene][right_gene]["children"])),
-                                            extant_descendants = list(set(graph[left_gene][gene]["extant_descendants"] + graph[gene][right_gene]["extant_descendants"])))
-                             if orient_edges:
-                                 wA, uA, cA, dA = graph[left_gene][gene]["weight"], graph[left_gene][gene]["unidirectional"], graph[left_gene][gene]["convergent"], graph[left_gene][gene]["divergent"]
-                                 wB, uB, cB, dB = graph[gene][right_gene]["weight"], graph[gene][right_gene]["unidirectional"], graph[gene][right_gene]["convergent"], graph[gene][right_gene]["divergent"]
-                                 u, c, d = orient_reconnected_edges(wA, uA, cA, dA, wB, uB, cB, dB)
-                                 graph[left_gene][right_gene]['unidirectional'] = u
-                                 graph[left_gene][right_gene]['convergent'] = c
-                                 graph[left_gene][right_gene]['divergent'] = d
-                             # if gene that will be removed has already been reconnected:
-                             if (left_gene, gene) in reconnected_edge_to_real_edges:
-                                 for e in reconnected_edge_to_real_edges[(left_gene, gene)]:
-                                     real_edge_to_transitive_edge[e] = (left_gene.parent, right_gene.parent)
-                                     real_edge_to_transitive_edge[e[::-1]] = (left_gene.parent, right_gene.parent)
-                             if (gene, right_gene) in reconnected_edge_to_real_edges:
-                                 for e in reconnected_edge_to_real_edges[(gene, right_gene)]:
-                                     real_edge_to_transitive_edge[e] = (left_gene.parent, right_gene.parent)
-                                     real_edge_to_transitive_edge[e[::-1]] = (left_gene.parent, right_gene.parent)
-                             real_edge_to_transitive_edge[(left_gene, gene)] = (left_gene.parent, right_gene.parent)
-                             real_edge_to_transitive_edge[(gene, left_gene)] = (left_gene.parent, right_gene.parent)
-                             real_edge_to_transitive_edge[(right_gene, gene)] = (left_gene.parent, right_gene.parent)
-                             real_edge_to_transitive_edge[(gene, right_gene)] = (left_gene.parent, right_gene.parent)
-                             # the following temp dictionary will be used to update the conversion real edge to transitive edge 
-                             # if a previously assigned transitive edge ends up being trimmed as well (consecutive removals (gap > 1))
-                             reconnected_edge_to_real_edges[(left_gene, right_gene)] = [(left_gene, gene), (gene, right_gene)]
-                             reconnected_edge_to_real_edges[(right_gene, left_gene)] = [(left_gene, gene), (gene, right_gene)]
+                            graph.add_edge(left_gene, right_gene, 
+                                           weight = weight,
+                                           children = list(set(children)),
+                                           extant_descendants = list(set(extant_descendants)))
+                            if orient_edges:
+                                graph[left_gene][right_gene]['unidirectional'] = u
+                                graph[left_gene][right_gene]['convergent'] = c
+                                graph[left_gene][right_gene]['divergent'] = d
+                        else:
+                            # the reconnected edge was already present in the graph: the minimal weight is added to its weight
+                            edge_data = graph[left_gene][right_gene]
+                            edge_data['weight'] += weight
+                            edge_data['children'] = list(set(edge_data['children'] + children))
+                            edge_data['extant_descendants'] = list(set(edge_data['extant_descendants'] + extant_descendants))
+                            if orient_edges:
+                                edge_data['unidirectional'] += u
+                                edge_data['convergent'] += c
+                                edge_data['divergent'] += d
+                        # the two removed edges, and the real edges of these if they have already been reconnected
+                        real_edges = [(left_gene, gene), (gene, right_gene)]
+                        real_edges += reconnected_edge_to_real_edges.get((left_gene, gene), [])
+                        real_edges += reconnected_edge_to_real_edges.get((gene, right_gene), [])
+                        for e in real_edges:
+                            real_edge_to_transitive_edge[e] = (left_gene.parent, right_gene.parent)
+                            real_edge_to_transitive_edge[e[::-1]] = (left_gene.parent, right_gene.parent)
+                        # the following temp dictionary will be used to update the conversion real edge to transitive edge 
+                        # if a previously assigned transitive edge ends up being trimmed as well (consecutive removals (gap > 1))
+                        real_edges += reconnected_edge_to_real_edges.get((left_gene, right_gene), [])
+                        reconnected_edge_to_real_edges[(left_gene, right_gene)] = real_edges
+                        reconnected_edge_to_real_edges[(right_gene, left_gene)] = real_edges
                         # when reconnecting two nodes, the gap_length is updated
                         gap_length[(left_gene, right_gene)] = gap_length[(right_gene, left_gene)] = gap
                 graph.remove_node(gene)
