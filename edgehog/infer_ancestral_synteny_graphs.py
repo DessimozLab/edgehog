@@ -332,7 +332,9 @@ def root_to_leaves_edge_trimming(ham, orient_edges):
                                 d = initial_d
                         else:
                             break
+                supported_by_children = not remove_edge
                 # if edge is only present in one children lineage, check if it is supported by outgroup (retain) or not (discard)
+                # with orient_edges, the outgroup is also checked for edges supported by two children, to retain their contexts
                 if (remove_edge or orient_edges) and tree_node.up:
                     try:
                         # either there was some reconnection between genes because of insertion in descendant
@@ -341,7 +343,8 @@ def root_to_leaves_edge_trimming(ham, orient_edges):
                         # or the real edge in current genome was also present in ancestor
                         transitive_edge = (gene.parent, adjacent_gene.parent)
                     ancestral_graph = tree_node.up.props['top_down_synteny']
-                    graph[gene][adjacent_gene]['nb_internal_nodes_from_ancestor_with_updated_weight'] = 1
+                    if not supported_by_children:
+                        graph[gene][adjacent_gene]['nb_internal_nodes_from_ancestor_with_updated_weight'] = 1
                     if transitive_edge[0] == transitive_edge[1] and transitive_edge[0] in ancestral_graph.nodes:
                         remove_edge = False
                         # when adjacency between paralogs has been merged in the internal node just before the duplication
@@ -349,7 +352,7 @@ def root_to_leaves_edge_trimming(ham, orient_edges):
                     elif ancestral_graph.has_edge(*transitive_edge):
                         ancestral_weight = ancestral_graph[transitive_edge[0]][transitive_edge[1]]['weight']
                         remove_edge = False
-                        if ancestral_weight <= weight:
+                        if ancestral_weight <= weight and not supported_by_children:
                             # that means that the edge is not present in the direct outgroup but is present
                             # in extant species connected to an even more ancestral node
                             # in this old ancestral node, the weight of the edge > edge in current node 
@@ -370,10 +373,14 @@ def root_to_leaves_edge_trimming(ham, orient_edges):
                 if remove_edge:
                     edges_to_remove.append((gene, adjacent_gene))
                 elif orient_edges:
+                    # unsupported contexts are reset to 0, unless no context is supported at all
                     if u + c + d == 0:
                         u = initial_u
                         c = initial_c
                         d = initial_d
+                    graph[gene][adjacent_gene]['unidirectional'] = u
+                    graph[gene][adjacent_gene]['convergent'] = c
+                    graph[gene][adjacent_gene]['divergent'] = d
             graph.remove_edges_from(edges_to_remove)
             tree_node.add_prop('top_down_synteny', graph)
             

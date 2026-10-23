@@ -80,14 +80,11 @@ def test_edge_with_weight_from_single_child_is_removed(root_only):
     assert nodes["R"].props["top_down_synteny"].number_of_edges() == 0
 
 
-# Issue #1. Paper: "When the --orient_edges option is enabled, the trimming
+# Issue #36. Paper: "When the --orient_edges option is enabled, the trimming
 # algorithm applies to each edge context. Only parsimoniously supported contexts
 # are retained, with unsupported ones reset to 0. If an edge is supported but
 # none of its contexts are [...], context weights remain unchanged."
-# Code: u, c, d are computed but never written back to the graph
-# (infer_ancestral_synteny_graphs.py:372-378).
 
-@pytest.mark.xfail(strict=True, reason="#1: unsupported orientation contexts are not reset in the top-down phase")
 def test_orientation_unsupported_context_is_reset(root_only):
     P = {i: Gene("P%d" % i) for i in range(1, 3)}
     ham, nodes = root_only("(L1,L2)R;",
@@ -191,13 +188,20 @@ def test_same_edges_kept_with_and_without_orientation(two_levels):
     assert without == {n: edge_set(nodes[n].props["top_down_synteny"]) for n in ("R", "N")}
 
 
-# Issue #5: with --orient_edges the children loop does not break and the parent
-# check always runs, which overwrites the value 0 set for edges supported by two
-# children (infer_ancestral_synteny_graphs.py:338-346).
+# Issue #36: with --orient_edges the parent is also checked for edges supported
+# by two children (for their contexts), which must not overwrite the value 0 of
+# nb_internal_nodes_from_ancestor_with_updated_weight.
 
-@pytest.mark.xfail(strict=True, reason="#5: nb_internal_nodes_from_ancestor_with_updated_weight depends on --orient_edges")
+def _nb_internal_nodes(graph):
+    return {frozenset((a.name, b.name)): data.get("nb_internal_nodes_from_ancestor_with_updated_weight")
+            for a, b, data in graph.edges(data=True)}
+
+
 def test_nb_internal_nodes_independent_of_orientation(two_levels):
     ham, nodes, P, Q = two_levels
+    root_to_leaves_edge_trimming(ham, False)
+    without = {n: _nb_internal_nodes(nodes[n].props["top_down_synteny"]) for n in ("R", "N")}
     root_to_leaves_edge_trimming(ham, True)
     graph = nodes["N"].props["top_down_synteny"]
     assert graph[P[6]][P[7]]["nb_internal_nodes_from_ancestor_with_updated_weight"] == 0
+    assert without == {n: _nb_internal_nodes(nodes[n].props["top_down_synteny"]) for n in ("R", "N")}
