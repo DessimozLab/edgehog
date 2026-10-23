@@ -137,15 +137,18 @@ def test_transitive_max_gap_independent_of_node_order(names, max_gap, expected):
         assert edge_set(work) == expected, "node order %s" % (perm,)
 
 
-@pytest.mark.parametrize("order", [("b", "c"), ("c", "b")])
-def test_transitive_maps_all_real_edges_of_a_gap(order):
-    graph, g = _transitive_input("A b c D".split())
-    work = _with_node_order(graph, [g[n] for n in order] + [g["A"], g["D"]])
-    mapping = build_transitive_graph(work, orient_edges=False, max_gap_length=2)
-    expected = {g["A"].parent, g["D"].parent}
-    for a, b in [("A", "b"), ("b", "c"), ("c", "D")]:
-        assert set(mapping[(g[a], g[b])]) == expected
-        assert set(mapping[(g[b], g[a])]) == expected
+@pytest.mark.parametrize("names, max_gap", [("A b c D", 2), ("A b c d E", 3)])
+def test_transitive_maps_all_real_edges_of_a_gap(names, max_gap):
+    names = names.split()
+    graph, g = _transitive_input(names)
+    parentless = [n for n in names if n.islower()]
+    expected = {g[names[0]].parent, g[names[-1]].parent}
+    for perm in itertools.permutations(parentless):
+        work = _with_node_order(graph, [g[n] for n in perm] + [g[names[0]], g[names[-1]]])
+        mapping = build_transitive_graph(work, orient_edges=False, max_gap_length=max_gap)
+        for a, b in zip(names, names[1:]):
+            assert set(mapping[(g[a], g[b])]) == expected, "node order %s" % (perm,)
+            assert set(mapping[(g[b], g[a])]) == expected, "node order %s" % (perm,)
 
 
 def test_transitive_reconnected_edge_orientation():
@@ -155,19 +158,19 @@ def test_transitive_reconnected_edge_orientation():
     assert (data["unidirectional"], data["convergent"], data["divergent"]) == (2, 0, 0)
 
 
-# Issue #2. Paper: "in case the reconnected edge was already present in the
+# Issue #38. Paper: "in case the reconnected edge was already present in the
 # network, this minimal weight is added to the initial edge weight".
-# Code: build_transitive_graph only reconnects if not graph.has_edge(...),
-# see infer_ancestral_synteny_graphs.py:135.
 
-@pytest.mark.xfail(strict=True, reason="#2: weight of an already existing reconnected edge is not incremented")
 def test_transitive_existing_edge_weight_is_incremented():
     graph, g = _transitive_input("A b C", weights=[3, 2], extra_edges=[("A", "C", 5)])
-    build_transitive_graph(graph, orient_edges=False, max_gap_length=2)
-    assert graph[g["A"]][g["C"]]["weight"] == 5 + 2
+    build_transitive_graph(graph, orient_edges=True, max_gap_length=2)
+    data = graph[g["A"]][g["C"]]
+    assert data["weight"] == 5 + 2
+    assert (data["unidirectional"], data["convergent"], data["divergent"]) == (5 + 2, 0, 0)
+    assert sorted(data["children"]) == ["child0", "child1", "extra"]
+    assert sorted(data["extant_descendants"]) == ["extra", "leaf0", "leaf1"]
 
 
-@pytest.mark.xfail(strict=True, reason="#2: real edges are not mapped when the reconnected edge already exists")
 def test_transitive_existing_edge_real_edges_are_mapped():
     graph, g = _transitive_input("A b C", weights=[3, 2], extra_edges=[("A", "C", 5)])
     mapping = build_transitive_graph(graph, orient_edges=False, max_gap_length=2)
