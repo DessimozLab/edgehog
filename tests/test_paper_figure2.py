@@ -208,6 +208,5 @@ def test_fig2c_conflicts_resolved(fig2c):
 # (infer_ancestral_synteny_graphs.py:487-512) and I-J-K becomes a cycle.
 # The figure shows the linear contig I-J-K.
 
-@pytest.mark.xfail(strict=True, reason="#10: reintroducing a removed edge can close a cycle (I-J-K)")
 def test_fig2c_final_contigs(fig2c):
     assert fig2c == edges("Z-Y", "Y-X", "X-W", "W-V", "V-U", "I-J", "J-K")
