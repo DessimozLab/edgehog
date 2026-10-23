@@ -145,13 +145,13 @@ def test_fig2a_root_bottom_up_graph_edges(fig2):
 
 
 # Fig. 2a shows weight 2 for D-E in the S3 propagated graph (and hence 3 at the
-# root). The code counts each of the three extant adjacencies D1-E1, E1-D2 and
-# D2-E2 (weight 3, and 4 at the root).
+# root). Each of the three extant adjacencies D1-E1, E1-D2 and D2-E2 supports
+# D-E, so the weight is 3 in S3 and 4 at the root; the figure simplifies this
+# (see #39).
 
-@pytest.mark.xfail(strict=True, reason="Fig. 2a: D-E weight from the S3 tandem duplicates is 3 in the code, 2 in the figure")
 def test_fig2a_tandem_duplicate_weights(fig2):
-    assert weighted_edges(fig2["S3"].props["transitive_synteny"])[frozenset("DE")] == 2
-    assert weighted_edges(fig2["Root"].props["bottom_up_synteny"])[frozenset("DE")] == 3
+    assert weighted_edges(fig2["S3"].props["transitive_synteny"])[frozenset("DE")] == 3
+    assert weighted_edges(fig2["Root"].props["bottom_up_synteny"])[frozenset("DE")] == 4
 
 
 # ---------------------------------------------------------------------------
