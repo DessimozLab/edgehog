@@ -34,6 +34,7 @@ oma = [
 
 [project.urls]
 Repository = "https://github.com/DessimozLab/edgehog"
+Changelog = "https://github.com/DessimozLab/edgehog/blob/main/CHANGELOG.md"
 
 [project.scripts]
 edgehog = 'edgehog.edgehog:main'
