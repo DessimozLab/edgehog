@@ -83,7 +83,6 @@ def test_reintroduction_of_non_reciprocal_removals(linearize):
 # (criterion 2). Code: np.argsort(weights)[::-1] reverses the preceding
 # cost ordering for equal weights (infer_ancestral_synteny_graphs.py:498-502).
 
-@pytest.mark.xfail(strict=True, reason="#3: tie-break on component weight is inverted when reintroducing edges")
 def test_reintroduction_prefers_heavier_component(linearize):
     # Y and Z each drop their weight-2 edge to X; hub B then drops X, Y and Z.
     # Both X-Y and X-Z can be reintroduced (weight 2), but only one of them.

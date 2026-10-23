@@ -447,7 +447,7 @@ def linearize_graphs(ham):
             sum_weights = list()
             for node, degree in conflicting_nodes:
                 sum_weights.append(sum([graph[node][neighbor]['weight'] for neighbor in graph.neighbors(node)]))
-            node_order = np.argsort(sum_weights)[::-1].tolist()
+            node_order = np.argsort(sum_weights, kind="stable")[::-1].tolist()
             conflicting_nodes = [conflicting_nodes[i] for i in node_order]
             
             removed_edges = list()
@@ -465,15 +465,15 @@ def linearize_graphs(ham):
                             neighbors.append(neighbor)
                         # sort by degree (in case of weight equality, we want as a secondary criterion to chose the neighbor with the highest degree)   
                         neighbors_degree = [graph.degree(neighbor) for neighbor in neighbors]
-                        degree_order = np.argsort(neighbors_degree).tolist()
+                        degree_order = np.argsort(neighbors_degree, kind="stable").tolist()
                         neighbors = [neighbors[i] for i in degree_order]
                         # sort by path cost (in case of weight equality, we want as a primary criterion to chose the neighbor that maximizes CC weight)   
                         # neighbors_cost = [compute_neighbor_cost(graph, neighbor, node, 0) for neighbor in neighbors]
                         neighbors_cost = [compute_neighbor_cost(graph, neighbor, node) for neighbor in neighbors]
-                        path_order = np.argsort(neighbors_cost).tolist()
+                        path_order = np.argsort(neighbors_cost, kind="stable").tolist()
                         neighbors = [neighbors[i] for i in path_order]
                         weights = [graph[node][neighbor]['weight'] for neighbor in neighbors]
-                        trim_order = np.argsort(weights).tolist()
+                        trim_order = np.argsort(weights, kind="stable").tolist()
                         
                         for i in range(0, len(trim_order)-2):
                             node_a, node_b = node, neighbors[trim_order[i]]
@@ -499,17 +499,16 @@ def linearize_graphs(ham):
                             if graph.degree(node) == 1:
                                 cost += compute_neighbor_cost(graph, next(graph.neighbors(node)), node)
                         costs.append(cost)
-                    cost_order = np.argsort(costs)[::-1].tolist()
-                    edges_to_reconnect = [edges_to_reconnect[i] for i in cost_order]
-                    weights = [weights[i] for i in cost_order]
-                    idx_edges_to_reconnect = [idx_edges_to_reconnect[i] for i in cost_order]
-                    weight_order = np.argsort(weights)[::-1].tolist()
+                    # reintroduce by descending edge weight, then by descending weight of the resulting connected component
+                    reconnect_order = sorted(range(len(edges_to_reconnect)), key=lambda i: (-weights[i], -costs[i]))
                     idx_to_pop = list()
-                    for i in range(0, len(weight_order)):
-                        edge = edges_to_reconnect[weight_order[i]]
-                        if graph.degree(edge[0]) < 2 and graph.degree(edge[1]) < 2 and not graph.has_edge(*edge):
+                    for i in reconnect_order:
+                        edge = edges_to_reconnect[i]
+                        # if both genes are already connected, they are the two ends of the same linear path
+                        # and the edge would close a cycle
+                        if graph.degree(edge[0]) < 2 and graph.degree(edge[1]) < 2 and not nx.has_path(graph, *edge):
                             graph.add_edge(edge[0], edge[1], **removed_edge_attributes[(edge[0], edge[1])])
-                            idx_to_pop.append(idx_edges_to_reconnect[weight_order[i]])
+                            idx_to_pop.append(idx_edges_to_reconnect[i])
                     idx_to_pop = sorted(idx_to_pop, reverse = True)
                     for idx in idx_to_pop:
                         if idx < len(removed_edges):
