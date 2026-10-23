@@ -202,15 +202,15 @@ def two_leaf_tree(monkeypatch):
     g2 = nx.Graph()
     add_edge(g2, b["b1"], b["b2"], u=1, children=[None], extant_descendants=[None])
     add_edge(g2, b["b3"], b["b4"], u=1, children=[None], extant_descendants=[None])
-    nodes["L1"].add_feature("bottom_up_synteny", g1)
-    nodes["L2"].add_feature("bottom_up_synteny", g2)
+    nodes["L1"].add_prop("bottom_up_synteny", g1)
+    nodes["L2"].add_prop("bottom_up_synteny", g2)
     return ham, nodes, P
 
 
 def test_propagation_sums_weights_over_children(two_leaf_tree):
     ham, nodes, P = two_leaf_tree
     leaves_to_root_synteny_propagation(ham, max_gaps=2, orient_edges=True)
-    graph = nodes["R"].bottom_up_synteny
+    graph = nodes["R"].props["bottom_up_synteny"]
     assert edge_set(graph) == edges("P1-P2", "P2-P3", "P3-P4")
     p12 = graph[P[1]][P[2]]
     # a1-a2 and a2b-a1 in L1 both map onto P1-P2, plus b1-b2 in L2
@@ -223,7 +223,7 @@ def test_propagation_sums_weights_over_children(two_leaf_tree):
 def test_propagation_bridges_gained_gene(two_leaf_tree):
     ham, nodes, P = two_leaf_tree
     leaves_to_root_synteny_propagation(ham, max_gaps=2, orient_edges=True)
-    p23 = nodes["R"].bottom_up_synteny[P[2]][P[3]]
+    p23 = nodes["R"].props["bottom_up_synteny"][P[2]][P[3]]
     assert p23["weight"] == 1
     # a2 -x-> a3 is co-directional followed by convergent -> convergent
     assert (p23["unidirectional"], p23["convergent"], p23["divergent"]) == (0, 1, 0)
@@ -232,7 +232,7 @@ def test_propagation_bridges_gained_gene(two_leaf_tree):
 def test_propagation_keeps_singleton_ancestral_genes(two_leaf_tree):
     ham, nodes, P = two_leaf_tree
     leaves_to_root_synteny_propagation(ham, max_gaps=2, orient_edges=False)
-    graph = nodes["R"].bottom_up_synteny
+    graph = nodes["R"].props["bottom_up_synteny"]
     assert P[5] in graph and graph.degree(P[5]) == 0
     assert not any(a == b for a, b in graph.edges())
 
@@ -240,13 +240,13 @@ def test_propagation_keeps_singleton_ancestral_genes(two_leaf_tree):
 def test_propagation_stores_child_transitive_graphs(two_leaf_tree):
     ham, nodes, P = two_leaf_tree
     leaves_to_root_synteny_propagation(ham, max_gaps=2, orient_edges=False)
-    t1 = nodes["L1"].transitive_synteny
-    t2 = nodes["L2"].transitive_synteny
+    t1 = nodes["L1"].props["transitive_synteny"]
+    t2 = nodes["L2"].props["transitive_synteny"]
     assert edge_set(t1) == edges("P1-P2", "P2-P3")
     assert t1[P[1]][P[2]]["weight"] == 2
     assert edge_set(t2) == edges("P1-P2", "P3-P4")
     # the per-child weights add up to the parent weight
-    parent = nodes["R"].bottom_up_synteny
+    parent = nodes["R"].props["bottom_up_synteny"]
     for a, b, data in parent.edges(data=True):
         contributed = sum(t[a][b]["weight"] for t in (t1, t2) if t.has_edge(a, b))
         assert contributed == data["weight"]

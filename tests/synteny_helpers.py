@@ -9,7 +9,7 @@ objects without having to write an orthoXML file.
 import types
 
 import networkx as nx
-from ete3 import Tree
+from ete4 import Tree
 
 from edgehog import infer_ancestral_synteny_graphs
 
@@ -49,19 +49,19 @@ def patch_pyham(monkeypatch):
 
 
 def make_ham(newick, ancestral_genes=None):
-    """Build a fake Ham around an ete3 tree with named internal nodes.
+    """Build a fake Ham around an ete4 tree with named internal nodes.
 
     Internal nodes get a FakeAncestralGenome (with the genes listed in
     ``ancestral_genes[name]``), leaves get a FakeExtantGenome.
     """
     ancestral_genes = ancestral_genes or {}
-    tree = Tree(newick, format=1)
+    tree = Tree(newick, parser=1)
     for node in tree.traverse():
-        if node.is_leaf():
-            node.add_feature("genome", FakeExtantGenome(node.name))
+        if node.is_leaf:
+            node.add_prop("genome", FakeExtantGenome(node.name))
         else:
-            node.add_feature("genome", FakeAncestralGenome(node.name, ancestral_genes.get(node.name, ())))
-    tree.n_internal_nodes = sum(1 for n in tree.traverse() if not n.is_leaf())
+            node.add_prop("genome", FakeAncestralGenome(node.name, ancestral_genes.get(node.name, ())))
+    tree.add_prop("n_internal_nodes", sum(1 for n in tree.traverse() if not n.is_leaf))
     nodes = {n.name: n for n in tree.traverse()}
     return types.SimpleNamespace(taxonomy=types.SimpleNamespace(tree=tree)), nodes
 

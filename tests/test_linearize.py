@@ -19,10 +19,10 @@ def linearize(monkeypatch):
 
     def run(graph):
         ham, nodes = make_ham("(L1,L2)R;")
-        nodes["R"].add_feature("top_down_synteny", graph)
+        nodes["R"].add_prop("top_down_synteny", graph)
         linearize_graphs(ham)
-        assert nodes["R"].top_down_synteny is graph  # input must not be modified
-        return nodes["R"].linear_synteny
+        assert nodes["R"].props["top_down_synteny"] is graph  # input must not be modified
+        return nodes["R"].props["linear_synteny"]
     return run
 
 

@@ -20,7 +20,8 @@ def main():
                                          'at each internal node of an input species phylogenetic tree')
     arg_parser.add_argument('--version', action='version', help='print version number and exit', version=version)
     arg_parser.add_argument('--output_directory', default='./edgehog_output', type=str, help='path to output directory (default is ./edgehog_output)')
-    arg_parser.add_argument('--species_tree', type=str, required=True, help='path to species/genomes phylogenetic tree (newick format)')
+    arg_parser.add_argument('--species_tree', type=str, help='path to species/genomes phylogenetic tree (newick format). '
+                            'Can be omitted if the HOGs file contains the species tree as <taxonomy> section; if both are given, the species tree is used')
     arg_parser.add_argument('--hogs', type=str, required=True, help='path to the HierarchicalGroups.orthoxml file in which HOGs are stored')
     arg_parser.add_argument('--gff_directory', type=str, help='path to directory with the gffs of extant genomes '
                             '(each gff file must be named according to the name of an extant genome / leaf on the species tree)')
