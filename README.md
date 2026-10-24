@@ -32,7 +32,9 @@ The package development version is tested on *Linux* operating systems. The deve
 
 The package itself should be compatible with Windows, Mac and Linux operating systems.
 
-Edgehog is written in Python, so a working python installation is needed before installing edgehog. The version of python version must be >=3.9 and <3.13
+Edgehog is written in Python, so a working python installation is needed before installing edgehog. The version of python must be >=3.9 and <3.15 (<3.13 for the `oma` extra, see below).
+
+Installing edgehog also needs a C compiler (e.g. `gcc`), because its dependency `ete4` is only distributed as source code.
 
 #### Installing Python on Ubuntu 22.04
 
@@ -48,7 +50,7 @@ pip install edgehog
 ```
 
 To enable hdf5 support and direct reading of genome data from OMA's HDF5 database, you need to enable 
-the `oma` extra during installation:
+the `oma` extra during installation (only available for python <3.13, because `pyoma` requires numpy<2):
 
 ```bash
 pip install edgehog[oma]
