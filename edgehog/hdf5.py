@@ -1,5 +1,6 @@
 import numpy
 import pandas as pd
+import collections
 import sys
 import networkx as nx
 
