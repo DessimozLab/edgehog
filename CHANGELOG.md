@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased
+
+### Changes in results
+- `--phylostratify`: an edge lost because one of its genes was lost now
+  counts as `lost_edges_due_to_gene_loss` also if a paralog of that gene
+  survives. Before, it counted as `lost_edges_due_to_rearrangement`. On
+  `test_data`, 79 of 1129 lost edges change category.
+  ([#60](https://github.com/DessimozLab/edgehog/pull/60))
+- `--phylostratify`: an edge to a gene without parent HOG counts as
+  `gained_edges_due_to_gene_gain` independent of which of the two genes it
+  is. Before, it counted as `gained_edges_due_to_rearrangement` when the gene
+  without parent HOG came second. On `test_data`, 1501 of 7135 gained edges
+  change category.
+  ([#59](https://github.com/DessimozLab/edgehog/issues/59),
+  [#60](https://github.com/DessimozLab/edgehog/pull/60))
+
+### Fixes
+- `--phylostratify` no longer searches the whole gene family for every lost
+  edge, which made it take days on large datasets.
+  ([#60](https://github.com/DessimozLab/edgehog/pull/60))
+
+### Tests
+- `tests/test_pipeline.py` compares the complete output on `test_data`
+  against a snapshot.
+
 ## 0.2.0 (2026-10-28)
 
 This release fixes several deviations from the algorithm described in the
