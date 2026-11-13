@@ -1,6 +1,6 @@
 [project]
 name = "edgehog"
-version = "0.2.0"
+version = "0.2.1"
 description = "Infering ancestral synteny with hierarchical orthologous groups"
 authors = [
    {name="Charles Bernard", email="charles.bernard@unil.ch"},
