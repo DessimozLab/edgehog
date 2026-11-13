@@ -64,7 +64,7 @@ def phylostratify(ham):
             is_retained = dict()
             
             for gene, adjacent_gene, edge_attributes in graph.edges(data=True):
-                if gene.parent is None or adjacent_gene is None:
+                if gene.parent is None or adjacent_gene.parent is None:
                     stratigraphy["gained_edges_due_to_gene_gain"] += 1
                 elif parent_graph.has_edge(gene.parent, adjacent_gene.parent):
                     if parent_occurrence[gene.parent] > 1 and parent_occurrence[adjacent_gene.parent] > 1:
@@ -78,13 +78,22 @@ def phylostratify(ham):
                 else:
                     stratigraphy["gained_edges_due_to_rearrangement"] += 1
             
-            for gene, adjacent_gene, edge_attributes in parent_graph.edges(data=True):
+            # A parent HOG survives on this branch if it has a direct child at this
+            # level (pyham inserts the intermediate HOGs, so no deeper search is
+            # needed). HOG.get_at_level would instead search the whole top-level
+            # family, which is slow and also finds the descendants of paralogs.
+            has_descendant = dict()
+
+            def survives(hog):
+                if hog not in has_descendant:
+                    has_descendant[hog] = any(child.genome == genome for child in hog.children)
+                return has_descendant[hog]
+
+            for gene, adjacent_gene in parent_graph.edges():
                 if not (gene, adjacent_gene) in is_retained:
-                    try:
-                        desc_a = gene.get_at_level(genome)
-                        desc_b = adjacent_gene.get_at_level(genome)
+                    if survives(gene) and survives(adjacent_gene):
                         stratigraphy["lost_edges_due_to_rearrangement"] += 1
-                    except:
+                    else:
                         stratigraphy["lost_edges_due_to_gene_loss"] += 1
                     
             tree_node.add_prop('stratigraphy', stratigraphy)      
