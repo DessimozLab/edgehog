@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.1 (2026-11-13)
 
 ### Changes in results
 - `--phylostratify`: an edge lost because one of its genes was lost now
@@ -21,9 +21,15 @@
   edge, which made it take days on large datasets.
   ([#60](https://github.com/DessimozLab/edgehog/pull/60))
 
-### Tests
+### Development
 - `tests/test_pipeline.py` compares the complete output on `test_data`
   against a snapshot.
+- CI actions updated: `astral-sh/setup-uv` 10.3.3
+  ([#56](https://github.com/DessimozLab/edgehog/pull/56)),
+  `sigstore/cosign-installer` 4.1.3
+  ([#57](https://github.com/DessimozLab/edgehog/pull/57)) and
+  `docker/login-action` 4.8.0
+  ([#58](https://github.com/DessimozLab/edgehog/pull/58)).
 
 ## 0.2.0 (2026-10-28)
 
