@@ -288,6 +288,14 @@ After running the script, the output folder should contain an updated version of
 
 If you are using TimeTree data in the context of EdgeHOG, please comply with the How to cite section in the TimeTree website (http://www.timetree.org/faqs)
 
+## Conservation of gene neighbourhoods along branches
+
+`utils/window_conservation.py` runs EdgeHOG and, before the output is written, compares on every branch of the species tree the neighbourhood (up to `--window` genes on each side, default 10) of each HOG in the parent's linearized graph with the neighbourhood of each of its descendants in the child (the extant graph for leaves). Child genes without a parent HOG are skipped. The script writes one row per (parent HOG, child HOG) pair with the window sizes and the number of shared HOGs. A lost HOG gets one row with an empty `child_hog`, and a duplicated HOG gets one row per copy.
+
+```uv run python utils/window_conservation.py --window 10 --analysis-out window_conservation.tsv.gz <edgehog arguments>```
+
+The same hook is available from Python: `edgehog.edgehog.main(argv, before_output=callback)` calls `callback(ham, args, out_dir)` after the inference and before the output files are written.
+
 ## Citation
 
 If you are using EdgeHOG, please cite:

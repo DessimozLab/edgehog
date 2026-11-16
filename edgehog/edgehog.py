@@ -15,7 +15,13 @@ import time
 
 
 
-def main():
+def main(argv=None, before_output=None):
+    """Run edgehog.
+
+    argv: command line arguments without the program name (default: sys.argv[1:]).
+    before_output: optional callable(ham, args, out_dir), called after all inference
+        steps and before the output files are written (e.g. for custom analyses).
+    """
     arg_parser = argparse.ArgumentParser(description='edgehog is a software tool that infers an ancestral synteny graph '
                                          'at each internal node of an input species phylogenetic tree')
     arg_parser.add_argument('--version', action='version', help='print version number and exit', version=version)
@@ -35,7 +41,7 @@ def main():
     arg_parser.add_argument('--include_extant_genes', action='store_true', help='whether to use a concatenation of all descending extant genes to describe an ancestral gene in the output files')
     arg_parser.add_argument("--out-format", choices=("TSV", "HDF5"), default="TSV",
                             help="define output format. Can be TSV (tab seperated files) or HDF5 (compatible for integration into oma hdf5)")
-    args = arg_parser.parse_args()
+    args = arg_parser.parse_args(argv)
 
     timer = dict()
 
@@ -83,6 +89,9 @@ def main():
         phylostratify(ham)
         end_time = time.time()
         timer["phylostratigraphy"] = end_time - start_time
+
+    if before_output is not None:
+        before_output(ham, args, out_dir)
 
     start_time = time.time()
     if args.out_format == "HDF5":
